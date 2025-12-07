@@ -1,9 +1,7 @@
-Initio - Free, multipurpose html5 template
+Pia Elbe
 =============
 
-Initio is a fully featured html5 theme which will help you create a stylish personal or company site. 
-6 page layout templates should cover all your development needs. 
-Font Awesome 4, parallax effects and more are included (but can be turned off of course)
+Pia Elbe, PhD, is a postdoctoral researcher currently working at the Department of Psychology, University of Konstanz.
 
 
 License
@@ -23,10 +21,4 @@ Credits
 -------
 * Design and development: **Sergey Pozhilov** - http://pozhilov.com
 * More free templates by Sergey: http://gettemplate.com
-
-Photos used in the template
--------
-* http://www.publicdomainpictures.net/view-image.php?image=19999
-* http://www.publicdomainpictures.net/view-image.php?image=6354
-* http://imcreator.com/free/business/macbook-computer
-* http://unsplush.com
+* 
