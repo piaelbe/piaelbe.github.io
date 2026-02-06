@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OpenAuth: The Contribution Web</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        :root {
+            --primary: #4361ee;
+            --bg: #f8f9fa;
+            --card: #ffffff;
+            --text: #212529;
+        }
+
+        body {
+            font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--bg);
+            color: var(--text);
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 30px;
+            max-width: 600px;
+        }
+
+        h1 { margin-bottom: 5px; }
+        p.subtitle { color: #6c757d; margin-top: 0; }
+
+        .container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 20px;
+            width: 100%;
+            max-width: 1200px;
+            justify-content: center;
+        }
+
+        /* Input Section */
+        .input-panel {
+            flex: 1;
+            min-width: 300px;
+            max-width: 400px;
+            background: var(--card);
+            padding: 25px;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+        }
+
+        .form-group { margin-bottom: 15px; }
+        label { display: block; margin-bottom: 5px; font-weight: 600; font-size: 0.9em; }
+        
+        input[type="text"] {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ced4da;
+            border-radius: 6px;
+            box-sizing: border-box;
+        }
+
+        input[type="range"] {
+            width: 100%;
+            accent-color: var(--primary);
+        }
+
+        .slider-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 5px;
+        }
+
+        button {
+            background-color: var(--primary);
+            color: white;
+            border: none;
+            padding: 12px 20px;
+            border-radius: 6px;
+            cursor: pointer;
+            width: 100%;
+            font-size: 1em;
+            font-weight: 600;
+            transition: background 0.2s;
+        }
+
+        button:hover { background-color: #3046b5; }
+        button.secondary { background-color: #6c757d; margin-top: 10px; }
+
+        /* Chart Section */
+        .chart-panel {
+            flex: 2;
+            min-width: 300px;
+            max-width: 700px;
+            background: var(--card);
+            padding: 25px;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .chart-container {
+            position: relative;
+            height: 500px;
+            width: 100%;
+        }
+
+        .author-list {
+            margin-top: 20px;
+            width: 100%;
+        }
+
+        .author-tag {
+            display: inline-block;
+            padding: 5px 10px;
+            margin: 5px;
+            border-radius: 20px;
+            font-size: 0.85em;
+            color: white;
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <h1>Contribution Spiderweb</h1>
+        <p class="subtitle">A visual alternative to author order</p>
+        <p class="subtitle">by Pia Elbe, 2026</p>
+    </header>
+
+    <div class="container">
+        <div class="input-panel">
+            <h3>Add Contributor</h3>
+            <div class="form-group">
+                <label>Name / Role</label>
+                <input type="text" id="authorName" placeholder="e.g. Dr. Jane Smith">
+            </div>
+
+            <p style="font-size:0.8em; color:#666; margin-bottom:15px;">Rate contribution (0 = None, 5 = Lead)</p>
+
+            <div class="form-group">
+                <div class="slider-row"><label>Conceptualization</label> <span id="val1">0</span></div>
+                <input type="range" id="dim1" min="0" max="5" value="0" oninput="document.getElementById('val1').innerText = this.value">
+            </div>
+
+            <div class="form-group">
+                <div class="slider-row"><label>Methodology</label> <span id="val2">0</span></div>
+                <input type="range" id="dim2" min="0" max="5" value="0" oninput="document.getElementById('val2').innerText = this.value">
+            </div>
+
+            <div class="form-group">
+                <div class="slider-row"><label>Data Curation</label> <span id="val3">0</span></div>
+                <input type="range" id="dim3" min="0" max="5" value="0" oninput="document.getElementById('val3').innerText = this.value">
+            </div>
+
+            <div class="form-group">
+                <div class="slider-row"><label>Analysis (Stats)</label> <span id="val4">0</span></div>
+                <input type="range" id="dim4" min="0" max="5" value="0" oninput="document.getElementById('val4').innerText = this.value">
+            </div>
+
+            <div class="form-group">
+                <div class="slider-row"><label>Writing</label> <span id="val5">0</span></div>
+                <input type="range" id="dim5" min="0" max="5" value="0" oninput="document.getElementById('val5').innerText = this.value">
+            </div>
+
+            <div class="form-group">
+                <div class="slider-row"><label>Supervision</label> <span id="val6">0</span></div>
+                <input type="range" id="dim6" min="0" max="5" value="0" oninput="document.getElementById('val6').innerText = this.value">
+            </div>
+
+            <button onclick="addAuthor()">Add to Web</button>
+            <button class="secondary" onclick="resetChart()">Reset</button>
+        </div>
+
+        <div class="chart-panel">
+            <div class="chart-container">
+                <canvas id="spiderChart"></canvas>
+            </div>
+            <div class="author-list" id="authorList"></div>
+        </div>
+    </div>
+
+    <script>
+        const ctx = document.getElementById('spiderChart').getContext('2d');
+        
+        // Initial Data Configuration
+        const data = {
+            labels: [
+                'Conceptualization', 
+                'Methodology', 
+                'Data Curation', 
+                'Analysis', 
+                'Writing', 
+                'Supervision'
+            ],
+            datasets: []
+        };
+
+        // Chart Configuration
+        const config = {
+            type: 'radar',
+            data: data,
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                elements: {
+                    line: { borderWidth: 3 }
+                },
+                scales: {
+                    r: {
+                        angleLines: { color: '#e9ecef' },
+                        grid: { color: '#e9ecef' },
+                        pointLabels: {
+                            font: { size: 14, weight: 'bold' },
+                            color: '#495057'
+                        },
+                        suggestedMin: 0,
+                        suggestedMax: 5
+                    }
+                },
+                plugins: {
+                    legend: { position: 'bottom' }
+                }
+            },
+        };
+
+        // Render Chart
+        let spiderChart = new Chart(ctx, config);
+
+        // Color Palette for Authors
+        const colors = [
+            'rgba(255, 99, 132, 0.5)',   // Red
+            'rgba(54, 162, 235, 0.5)',   // Blue
+            'rgba(255, 206, 86, 0.5)',   // Yellow
+            'rgba(75, 192, 192, 0.5)',   // Green
+            'rgba(153, 102, 255, 0.5)',  // Purple
+            'rgba(255, 159, 64, 0.5)'    // Orange
+        ];
+        const borderColors = [
+            'rgba(255, 99, 132, 1)',
+            'rgba(54, 162, 235, 1)',
+            'rgba(255, 206, 86, 1)',
+            'rgba(75, 192, 192, 1)',
+            'rgba(153, 102, 255, 1)',
+            'rgba(255, 159, 64, 1)'
+        ];
+
+        function addAuthor() {
+            const name = document.getElementById('authorName').value;
+            if (!name) return alert("Please enter a name.");
+
+            // Get values from sliders
+            const d1 = parseInt(document.getElementById('dim1').value);
+            const d2 = parseInt(document.getElementById('dim2').value);
+            const d3 = parseInt(document.getElementById('dim3').value);
+            const d4 = parseInt(document.getElementById('dim4').value);
+            const d5 = parseInt(document.getElementById('dim5').value);
+            const d6 = parseInt(document.getElementById('dim6').value);
+
+            const colorIndex = spiderChart.data.datasets.length % colors.length;
+
+            const newDataset = {
+                label: name,
+                data: [d1, d2, d3, d4, d5, d6],
+                fill: true,
+                backgroundColor: colors[colorIndex],
+                borderColor: borderColors[colorIndex],
+                pointBackgroundColor: borderColors[colorIndex],
+                pointBorderColor: '#fff',
+                pointHoverBackgroundColor: '#fff',
+                pointHoverBorderColor: borderColors[colorIndex]
+            };
+
+            // Update Chart
+            spiderChart.data.datasets.push(newDataset);
+            spiderChart.update();
+
+            // Add visual tag
+            const tag = document.createElement('span');
+            tag.className = 'author-tag';
+            tag.innerText = name;
+            tag.style.backgroundColor = borderColors[colorIndex];
+            document.getElementById('authorList').appendChild(tag);
+
+            // Clear Input
+            document.getElementById('authorName').value = '';
+        }
+
+        function resetChart() {
+            spiderChart.data.datasets = [];
+            spiderChart.update();
+            document.getElementById('authorList').innerHTML = '';
+        }
+    </script>
+</body>
+</html>
