@@ -64,7 +64,7 @@ html, body {
 <body>
 
     <div id="sidebar">
-        <h2>🔬 Experiment Config</h2>
+        <h2>Experiment Config</h2>
         
         <div class="control-group">
             <label>Spawn Rate (ms) <span id="val-rate" class="value-display">800</span></label>
@@ -95,12 +95,19 @@ html, body {
             <input type="range" id="param-time" min="10" max="300" step="10" value="60">
         </div>
 
+		<div class="control-group">
+   			<label>Travel Cost (s) <span id="val-travel" class="value-display">2</span></label>
+    		<input type="range" id="param-travel" min="0" max="10" step="1" value="2">
+    		<small>Delay before fish reappear</small>
+		</div>
+
         <button id="start-btn" onclick="startGame()">Start Experiment</button>
         <button id="stop-btn" onclick="stopGame()">Stop Game</button>
     </div>
 
     <div id="game-container">
         <div id="hud">
+			<button id="travel-btn" onclick="manualTravel()" style="position: absolute; bottom: 20px; right: 20px; padding: 15px 25px; background: #ffc107; border: none; border-radius: 50px; font-weight: bold; cursor: pointer; z-index: 5;">Travel to Next Pond</button>
             <div>Score: <span id="score">0</span></div>
             <div>Pond: <span id="pond-count">1</span></div>
             <div>Time: <span id="timer">00:00</span></div>
@@ -121,14 +128,19 @@ html, body {
 
     <script>
         // --- CONFIGURATION VARIABLES ---
-        let gameActive = false;
-        let score = 0;
-        let timeLeft = 0;
-        let currentPond = 1;
-        let fishCaughtInPond = 0;
-        
-        let gameTimerInterval;
-        let spawnerInterval;
+		// --- CONFIGURATION VARIABLES ---
+		let gameActive = false;
+		let score = 0;
+		let timeLeft = 0;
+		let currentPond = 1;
+		let fishCaughtInPond = 0;
+
+		// NEW DATA TRACKING VARIABLES
+		let pondEntryTime = 0;
+		let pondDataLog = []; 
+
+		let gameTimerInterval;
+		let spawnerInterval;
 
         // --- DOM ELEMENTS ---
         const gameContainer = document.getElementById('game-container');
@@ -159,26 +171,28 @@ function playSadSound() {
         });
 
         // --- CORE GAME LOGIC ---
-
-        function startGame() {
-            if(gameActive) return;
-            
-            // Reset Stats
-            score = 0;
-            currentPond = 1;
-            fishCaughtInPond = 0;
-            timeLeft = parseInt(document.getElementById('param-time').value);
-            
-            updateHUD();
-            document.getElementById('start-btn').style.display = 'none';
-            document.getElementById('stop-btn').style.display = 'block';
-            
-            gameActive = true;
-            
-            // Start Timers
-            gameTimerInterval = setInterval(gameLoop, 1000);
-            startSpawner();
-        }
+		function startGame() {
+		    if(gameActive) return;
+    
+		    // Reset Stats
+		    score = 0;
+		    currentPond = 1;
+		    fishCaughtInPond = 0;
+		    pondDataLog = []; 
+		    pondEntryTime = Date.now(); // Starts the timer for the very first pond
+    
+		    timeLeft = parseInt(document.getElementById('param-time').value);
+    
+		    updateHUD();
+		    document.getElementById('start-btn').style.display = 'none';
+		    document.getElementById('stop-btn').style.display = 'block';
+    
+		    gameActive = true;
+    
+		    // Start Timers
+		    gameTimerInterval = setInterval(gameLoop, 1000);
+		    startSpawner();
+		}
 
         function stopGame() {
             gameActive = false;
@@ -252,25 +266,55 @@ function playSadSound() {
             }, lifespan);
         }
 
-        function checkPondStatus() {
-            const maxFish = parseInt(document.getElementById('param-max-fish').value);
-            
-            if (fishCaughtInPond >= maxFish) {
-                // Pause spawning but keep timer logic (or pause timer too if you prefer)
-                clearInterval(spawnerInterval);
-                
-                // Show Overlay
-                showOverlay("The pond is now empty!", `You caught ${fishCaughtInPond} fish here.`, true);
-            }
-        }
+		function checkPondStatus() {
+		    // We fetch the LATEST value from the slider right now
+		    const maxFish = parseInt(document.getElementById('param-max-fish').value);
+		    
+ 		   if (fishCaughtInPond >= maxFish) {
+		        clearInterval(spawnerInterval);
+		        // This triggers the "Pond Empty" message
+		        showOverlay("The pond is now empty!", `You caught ${fishCaughtInPond} fish here.`, true);
+		    }
+		}
 
-        function nextPond() {
-            currentPond++;
-            fishCaughtInPond = 0;
-            overlay.style.display = 'none';
-            updateHUD();
-            startSpawner(); // Resume spawning
-        }
+		function nextPond() {
+		    // 1. Calculate time spent in the pond just finished
+		    const timeSpent = (Date.now() - pondEntryTime) / 1000;
+		    
+		    // 2. Save the data for this "patch"
+		    pondDataLog.push({
+		        pond: currentPond,
+		        duration: timeSpent.toFixed(2),
+		        caught: fishCaughtInPond
+		    });
+		
+		    // 3. Prepare for next pond
+		    currentPond++;
+		    fishCaughtInPond = 0;
+		    overlay.style.display = 'none';
+		    updateHUD();
+		
+		    // 4. Implement the Dynamic Travel Cost from your slider
+		    const travelCost = parseInt(document.getElementById('param-travel').value) * 1000;
+		    
+		    if (travelCost > 0) {
+		        // Show "Traveling" screen and wait
+		        showOverlay("Traveling to new pond...", `Please wait ${travelCost/1000} seconds...`, false);
+		        document.getElementById('close-overlay-btn').style.display = 'none'; 
+		        
+		        setTimeout(() => {
+		            if(gameActive) {
+		                overlay.style.display = 'none';
+		                pondEntryTime = Date.now(); // Restart the entry timer ONLY after traveling is done
+		                startSpawner();
+		            }
+		        }, travelCost);
+		    } else {
+		        // No travel cost? Just start spawning immediately
+		        pondEntryTime = Date.now();
+		        startSpawner();
+		    }
+		}
 
         function endGame() {
             stopGame();
@@ -304,8 +348,21 @@ function playSadSound() {
             overlay.style.display = 'none';
         }
 
+		function manualTravel() {
+		    if (!gameActive) return; // Don't allow traveling if game is paused
+    
+		    // Briefly pause the game to show the transition
+		    clearInterval(spawnerInterval);
+    
+		    // Clear any fish/trash currently on screen
+		    document.querySelectorAll('.entity').forEach(e => e.remove());
+    
+		    showOverlay("Traveling...", "You decided to find a new spot!", true);
+		}
+
     </script>
 </body>
 
 </html>
+
 
