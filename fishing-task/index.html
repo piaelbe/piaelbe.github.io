@@ -6,30 +6,16 @@
     <title>Fishing Task Demo</title>
     <style>
         body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 0; padding: 0; background-color: #f0f4f8; display: flex; height: 100vh; }
-		/* Mobile Adjustments */
-		@media (max-width: 768px) {
-  		  body { flex-direction: column; }
- 	   #sidebar { 
-        width: 100%; 
-        height: 30vh; 
-        order: 2; /* Moves settings to the bottom */
-        padding: 10px;
- 			   }
-    #game-container { 
-        height: 70vh; 
-        width: 100%;
-        order: 1; 
-    }
-    .entity { font-size: 40px; } /* Slightly smaller fish for smaller screens */
-}
+        
+        /* Mobile Adjustments */
+        @media (max-width: 768px) {
+            body { flex-direction: column; }
+            #sidebar { width: 100%; height: 30vh; order: 2; padding: 10px; }
+            #game-container { height: 70vh; width: 100%; order: 1; }
+            .entity { font-size: 40px; }
+        }
 
-/* Prevent accidental scrolling/bouncing on mobile */
-html, body {
-    overflow: hidden;
-    position: fixed;
-    width: 100%;
-    height: 100%;
-}
+        html, body { overflow: hidden; position: fixed; width: 100%; height: 100%; }
         
         /* SIDEBAR CONTROLS */
         #sidebar { width: 300px; background: #fff; padding: 20px; box-shadow: 2px 0 5px rgba(0,0,0,0.1); overflow-y: auto; z-index: 10; }
@@ -38,34 +24,45 @@ html, body {
         label { display: block; font-weight: bold; font-size: 0.9em; margin-bottom: 5px; }
         input[type="range"] { width: 100%; }
         .value-display { float: right; color: #007bff; }
+        
         button { width: 100%; padding: 10px; background: #28a745; color: white; border: none; border-radius: 5px; cursor: pointer; font-size: 1.1em; }
         button:hover { background: #218838; }
         button#stop-btn { background: #dc3545; margin-top: 10px; display: none; }
 
         /* GAME AREA */
-        #game-container { flex-grow: 1; position: relative; background: linear-gradient(to bottom, #87CEEB, #1E90FF); overflow: hidden; cursor: crosshair; }
+        #game-container { flex-grow: 1; position: relative; background: linear-gradient(to bottom, #87CEEB, #1E90FF); overflow: hidden; cursor: crosshair; height: 100vh; }
         
-        /* HUD */
-        #hud { position: absolute; top: 10px; left: 10px; right: 10px; display: flex; justify-content: space-between; color: white; font-size: 1.5em; text-shadow: 2px 2px 4px rgba(0,0,0,0.5); pointer-events: none; }
+        /* HUD - Updated to not interfere with buttons */
+        #hud { position: absolute; top: 10px; left: 10px; right: 10px; display: flex; justify-content: space-between; color: white; font-size: 1.5em; text-shadow: 2px 2px 4px rgba(0,0,0,0.5); pointer-events: none; z-index: 5; }
+
+        /* TRAVEL BUTTON - Fixed position and style */
+        #travel-btn { 
+            position: absolute; 
+            bottom: 30px; 
+            right: 30px; 
+            width: auto; /* Prevents stretching */
+            padding: 15px 25px; 
+            background: #FFD700; 
+            color: #333;
+            border: 3px solid #DAA520; 
+            border-radius: 15px; 
+            font-weight: bold; 
+            font-size: 1.1em; 
+            cursor: pointer; 
+            z-index: 100; 
+            box-shadow: 0 4px 8px rgba(0,0,0,0.3); 
+        }
+        #travel-btn:active { transform: scale(0.95); }
 
         /* GAME ELEMENTS */
-        .entity { position: absolute; font-size: 60px; cursor: pointer; user-select: none; transition: transform 0.1s; }
-        .entity:active { transform: scale(0.9); }
+        .entity { position: absolute; font-size: 60px; cursor: pointer; user-select: none; transition: transform 0.1s; z-index: 10; }
         .fish { filter: drop-shadow(0 0 5px white); }
         .trash { filter: grayscale(0.8); }
 
         /* OVERLAYS */
-        #overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); color: white; display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 20; display: none; }
+        #overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); color: white; display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 200; display: none; }
         #message-box { text-align: center; max-width: 600px; }
         #next-pond-btn { margin-top: 20px; background: #007bff; width: auto; padding: 10px 30px; }
-
-		#game-container {
- 	    flex-grow: 1;
- 	    position: relative;
-	    background: linear-gradient(to bottom, #87CEEB, #1E90FF);
-	    overflow: hidden; 
-	    height: 100vh; /* Ensures it takes the full height of the window */
-		}
 
     </style>
 </head>
@@ -73,55 +70,44 @@ html, body {
 
     <div id="sidebar">
         <h2>Experiment Config</h2>
-        
         <div class="control-group">
             <label>Spawn Rate (ms) <span id="val-rate" class="value-display">800</span></label>
             <input type="range" id="param-rate" min="200" max="2000" step="100" value="800">
-            <small>Lower = Faster</small>
         </div>
-
         <div class="control-group">
             <label>Trash Ratio (%) <span id="val-ratio" class="value-display">30</span></label>
             <input type="range" id="param-ratio" min="0" max="100" value="30">
-            <small>Chance of distractor</small>
         </div>
-
         <div class="control-group">
             <label>Item Lifespan (ms) <span id="val-life" class="value-display">1500</span></label>
             <input type="range" id="param-life" min="500" max="3000" step="100" value="1500">
-            <small>How long item stays on screen</small>
         </div>
-
         <div class="control-group">
             <label>Max Fish per Pond <span id="val-max-fish" class="value-display">10</span></label>
             <input type="range" id="param-max-fish" min="1" max="50" value="10">
-            <small>Triggers "Pond Empty"</small>
         </div>
-
         <div class="control-group">
             <label>Total Game Time (s) <span id="val-time" class="value-display">60</span></label>
             <input type="range" id="param-time" min="10" max="300" step="10" value="60">
         </div>
-
-		<div class="control-group">
-   			<label>Travel Cost (s) <span id="val-travel" class="value-display">2</span></label>
-    		<input type="range" id="param-travel" min="0" max="10" step="1" value="2">
-    		<small>Delay before fish reappear</small>
-		</div>
-
+        <div class="control-group">
+            <label>Travel Cost (s) <span id="val-travel" class="value-display">2</span></label>
+            <input type="range" id="param-travel" min="0" max="10" step="1" value="2">
+        </div>
         <button id="start-btn" onclick="startGame()">Start Experiment</button>
         <button id="stop-btn" onclick="stopGame()">Stop Game</button>
     </div>
 
     <div id="game-container">
         <div id="hud">
-			<button id="travel-btn" onclick="manualTravel()" style="position: absolute; bottom: 30px; right: 30px; padding: 20px 30px; background: #FFD700; border: 3px solid #DAA520; border-radius: 15px; font-weight: bold; font-size: 1.2em; cursor: pointer; z-index: 100; box-shadow: 0 4px 8px rgba(0,0,0,0.3);">
-  		      LEAVE POND
-			</button>
             <div>Score: <span id="score">0</span></div>
             <div>Pond: <span id="pond-count">1</span></div>
             <div>Time: <span id="timer">00:00</span></div>
         </div>
+
+        <button id="travel-btn" onclick="manualTravel()">
+            🚣 LEAVE POND
+        </button>
         
         <div id="overlay">
             <div id="message-box">
@@ -133,93 +119,71 @@ html, body {
         </div>
     </div>
 
-	<audio id="snd-happy" src="happy.mp3" preload="auto"></audio> 
-	<audio id="snd-sad" src="sad.mp3" preload="auto"></audio>
+    <audio id="snd-happy" src="happy.mp3" preload="auto"></audio> 
+    <audio id="snd-sad" src="sad.mp3" preload="auto"></audio>
 
     <script>
-        // --- CONFIGURATION VARIABLES ---
-		// --- CONFIGURATION VARIABLES ---
-		let gameActive = false;
-		let score = 0;
-		let timeLeft = 0;
-		let currentPond = 1;
-		let fishCaughtInPond = 0;
+        let gameActive = false;
+        let score = 0;
+        let timeLeft = 0;
+        let currentPond = 1;
+        let fishCaughtInPond = 0;
+        let pondEntryTime = 0;
+        let pondDataLog = []; 
+        let gameTimerInterval;
+        let spawnerInterval;
 
-		// NEW DATA TRACKING VARIABLES
-		let pondEntryTime = 0;
-		let pondDataLog = []; 
-
-		let gameTimerInterval;
-		let spawnerInterval;
-
-        // --- DOM ELEMENTS ---
         const gameContainer = document.getElementById('game-container');
         const scoreDisplay = document.getElementById('score');
         const timerDisplay = document.getElementById('timer');
         const pondDisplay = document.getElementById('pond-count');
         const overlay = document.getElementById('overlay');
         
-        // --- SOUNDS ---
-function playHappySound() {
-    const snd = document.getElementById('snd-happy');
-    snd.currentTime = 0; // Reset sound to start (allows rapid fire clicking)
-    snd.play().catch(e => console.log("Audio play blocked or file missing:", e));
-}
+        function playHappySound() {
+            const snd = document.getElementById('snd-happy');
+            snd.currentTime = 0;
+            snd.play().catch(e => console.log("Audio play blocked:", e));
+        }
 
-function playSadSound() {
-    const snd = document.getElementById('snd-sad');
-    snd.currentTime = 0; 
-    snd.play().catch(e => console.log("Audio play blocked or file missing:", e));
-}
+        function playSadSound() {
+            const snd = document.getElementById('snd-sad');
+            snd.currentTime = 0; 
+            snd.play().catch(e => console.log("Audio play blocked:", e));
+        }
 
-        // --- UI UPDATERS ---
-        // Update slider values in real-time
         document.querySelectorAll('input[type="range"]').forEach(input => {
             input.addEventListener('input', (e) => {
                 document.getElementById('val-' + e.target.id.split('-')[1]).innerText = e.target.value;
             });
         });
 
-        // --- CORE GAME LOGIC ---
-		function startGame() {
-		    if(gameActive) return;
-    
-		    // Reset Stats
-		    score = 0;
-		    currentPond = 1;
-		    fishCaughtInPond = 0;
-		    pondDataLog = []; 
-		    pondEntryTime = Date.now(); // Starts the timer for the very first pond
-    
-		    timeLeft = parseInt(document.getElementById('param-time').value);
-    
-		    updateHUD();
-		    document.getElementById('start-btn').style.display = 'none';
-		    document.getElementById('stop-btn').style.display = 'block';
-    
-		    gameActive = true;
-    
-		    // Start Timers
-		    gameTimerInterval = setInterval(gameLoop, 1000);
-		    startSpawner();
-		}
+        function startGame() {
+            if(gameActive) return;
+            score = 0;
+            currentPond = 1;
+            fishCaughtInPond = 0;
+            pondDataLog = []; 
+            pondEntryTime = Date.now();
+            timeLeft = parseInt(document.getElementById('param-time').value);
+            updateHUD();
+            document.getElementById('start-btn').style.display = 'none';
+            document.getElementById('stop-btn').style.display = 'block';
+            gameActive = true;
+            gameTimerInterval = setInterval(gameLoop, 1000);
+            startSpawner();
+        }
 
         function stopGame() {
             gameActive = false;
             clearInterval(gameTimerInterval);
             clearInterval(spawnerInterval);
-            
-            // Clear screen
             document.querySelectorAll('.entity').forEach(e => e.remove());
-            
             document.getElementById('start-btn').style.display = 'block';
             document.getElementById('stop-btn').style.display = 'none';
         }
 
         function startSpawner() {
-            // Clear existing spawner to allow rate changes
             if(spawnerInterval) clearInterval(spawnerInterval);
-            
             const spawnRate = parseInt(document.getElementById('param-rate').value);
             spawnerInterval = setInterval(spawnEntity, spawnRate);
         }
@@ -227,124 +191,99 @@ function playSadSound() {
         function gameLoop() {
             timeLeft--;
             updateHUD();
-
-            if (timeLeft <= 0) {
-                endGame();
-            }
+            if (timeLeft <= 0) endGame();
         }
 
         function spawnEntity() {
             if (!gameActive) return;
-
-            // Determine if Fish or Trash based on Ratio Slider
             const trashRatio = parseInt(document.getElementById('param-ratio').value);
             const isTrash = Math.random() * 100 < trashRatio;
-            
             const entity = document.createElement('div');
             entity.classList.add('entity');
-            entity.innerText = isTrash ? "👞" : "🐟"; // Emojis instead of images
+            entity.innerText = isTrash ? "👞" : "🐟";
             entity.classList.add(isTrash ? "trash" : "fish");
 
-            // Random Position (avoiding edges)
             const maxX = gameContainer.clientWidth - 100;
             const maxY = gameContainer.clientHeight - 100;
             entity.style.left = Math.random() * maxX + 50 + 'px';
             entity.style.top = Math.random() * maxY + 50 + 'px';
 
-            // Click Event
-				// 'pointerdown' works for both mouse clicks and finger taps instantly
-			entity.onpointerdown = (e) => {
-			    e.preventDefault(); // Prevents the phone from trying to "select" the emoji
-			    if (isTrash) {
-			        playSadSound();
-			    } else {
- 			       playHappySound();
-  			      score += 10;
-  			      fishCaughtInPond++;
-			        checkPondStatus();
-			    }
-			    updateHUD();
-			    entity.remove();
-			};
+            entity.onpointerdown = (e) => {
+                e.preventDefault();
+                if (isTrash) {
+                    playSadSound();
+                } else {
+                    playHappySound();
+                    score += 10;
+                    fishCaughtInPond++;
+                    checkPondStatus();
+                }
+                updateHUD();
+                entity.remove();
+            };
 
             gameContainer.appendChild(entity);
-
-            // "Whack-a-mole" Disappear Timer
             const lifespan = parseInt(document.getElementById('param-life').value);
-            setTimeout(() => {
-                if(entity.parentNode) entity.remove();
-            }, lifespan);
+            setTimeout(() => { if(entity.parentNode) entity.remove(); }, lifespan);
         }
 
-		function checkPondStatus() {
-		    // We fetch the LATEST value from the slider right now
-		    const maxFish = parseInt(document.getElementById('param-max-fish').value);
-		    
- 		   if (fishCaughtInPond >= maxFish) {
-		        clearInterval(spawnerInterval);
-		        // This triggers the "Pond Empty" message
-		        showOverlay("The pond is now empty!", `You caught ${fishCaughtInPond} fish here.`, true);
-		    }
-		}
+        function checkPondStatus() {
+            const maxFish = parseInt(document.getElementById('param-max-fish').value);
+            if (fishCaughtInPond >= maxFish) {
+                clearInterval(spawnerInterval);
+                showOverlay("The pond is now empty!", `You caught ${fishCaughtInPond} fish here.`, true);
+            }
+        }
 
-		function nextPond() {
-		    // 1. Calculate time spent in the pond just finished
-		    const timeSpent = (Date.now() - pondEntryTime) / 1000;
-		    
-		    // 2. Save the data for this "patch"
-		    pondDataLog.push({
-		        pond: currentPond,
-		        duration: timeSpent.toFixed(2),
-		        caught: fishCaughtInPond
-		    });
-		
-		    // 3. Prepare for next pond
-		    currentPond++;
-		    fishCaughtInPond = 0;
-		    overlay.style.display = 'none';
-		    updateHUD();
-		
-		    // 4. Implement the Dynamic Travel Cost from your slider
-		    const travelCost = parseInt(document.getElementById('param-travel').value) * 1000;
-		    
-		    if (travelCost > 0) {
-		        // Show "Traveling" screen and wait
-		        showOverlay("Traveling to new pond...", `Please wait ${travelCost/1000} seconds...`, false);
-		        document.getElementById('close-overlay-btn').style.display = 'none'; 
-		        
-		        setTimeout(() => {
-		            if(gameActive) {
-		                overlay.style.display = 'none';
-		                pondEntryTime = Date.now(); // Restart the entry timer ONLY after traveling is done
-		                startSpawner();
-		            }
-		        }, travelCost);
-		    } else {
-		        // No travel cost? Just start spawning immediately
-		        pondEntryTime = Date.now();
-		        startSpawner();
-		    }
-		}
+        function manualTravel() {
+            if (!gameActive) return;
+            clearInterval(spawnerInterval);
+            document.querySelectorAll('.entity').forEach(e => e.remove());
+            showOverlay("Traveling...", "You decided to find a new spot!", true);
+        }
+
+        function nextPond() {
+            const timeSpent = (Date.now() - pondEntryTime) / 1000;
+            pondDataLog.push({ pond: currentPond, duration: timeSpent.toFixed(2), caught: fishCaughtInPond });
+            currentPond++;
+            fishCaughtInPond = 0;
+            overlay.style.display = 'none';
+            updateHUD();
+
+            const travelCost = parseInt(document.getElementById('param-travel').value) * 1000;
+            if (travelCost > 0) {
+                showOverlay("Traveling to new pond...", `Please wait ${travelCost/1000} seconds...`, false);
+                document.getElementById('close-overlay-btn').style.display = 'none'; 
+                setTimeout(() => {
+                    if(gameActive) {
+                        overlay.style.display = 'none';
+                        pondEntryTime = Date.now();
+                        startSpawner();
+                    }
+                }, travelCost);
+            } else {
+                pondEntryTime = Date.now();
+                startSpawner();
+            }
+        }
 
         function endGame() {
             stopGame();
             showOverlay("Experiment Complete", `Total Score: ${score}`, false);
         }
 
-        // --- HELPER FUNCTIONS ---
         function updateHUD() {
             scoreDisplay.innerText = score;
             pondDisplay.innerText = currentPond;
-            let minutes = Math.floor(timeLeft / 60);
-            let seconds = timeLeft % 60;
-            timerDisplay.innerText = `${minutes}:${seconds < 10 ? '0' : ''}${seconds}`;
+            let mins = Math.floor(timeLeft / 60);
+            let secs = timeLeft % 60;
+            timerDisplay.innerText = `${mins}:${secs < 10 ? '0' : ''}${secs}`;
         }
 
         function showOverlay(title, desc, isNextPond) {
             document.getElementById('overlay-title').innerText = title;
             document.getElementById('overlay-desc').innerText = desc;
             overlay.style.display = 'flex';
-
             if (isNextPond) {
                 document.getElementById('next-pond-btn').style.display = 'inline-block';
                 document.getElementById('close-overlay-btn').style.display = 'none';
@@ -354,26 +293,7 @@ function playSadSound() {
             }
         }
 
-        function closeOverlay() {
-            overlay.style.display = 'none';
-        }
-
-		function manualTravel() {
-		    if (!gameActive) return; // Don't allow traveling if game is paused
-    
-		    // Briefly pause the game to show the transition
-		    clearInterval(spawnerInterval);
-    
-		    // Clear any fish/trash currently on screen
-		    document.querySelectorAll('.entity').forEach(e => e.remove());
-    
-		    showOverlay("Traveling...", "You decided to find a new spot!", true);
-		}
-
+        function closeOverlay() { overlay.style.display = 'none'; }
     </script>
 </body>
-
 </html>
-
-
-
