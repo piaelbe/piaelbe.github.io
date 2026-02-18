@@ -92,8 +92,8 @@
         </div>
     </div>
 
-    <audio id="snd-happy" src=""></audio> 
-    <audio id="snd-sad" src=""></audio>
+	<audio id="snd-happy" src="happy.mp3" preload="auto"></audio> 
+	<audio id="snd-sad" src="sad.mp3" preload="auto"></audio>
 
     <script>
         // --- CONFIGURATION VARIABLES ---
@@ -113,17 +113,18 @@
         const pondDisplay = document.getElementById('pond-count');
         const overlay = document.getElementById('overlay');
         
-        // --- SOUNDS (Dummy functions for now) ---
-        function playHappySound() {
-            // Uncomment next line for 'happy.mp3' in the folder
-            document.getElementById('snd-happy').play().catch(e => console.log("Audio not set"));
-            console.log("Audio: Happy!"); 
-        }
-        function playSadSound() {
-            // Uncomment next line for 'sad.mp3' in the folder
-            document.getElementById('snd-sad').play().catch(e => console.log("Audio not set"));
-            console.log("Audio: Sad/Distractor");
-        }
+        // --- SOUNDS ---
+function playHappySound() {
+    const snd = document.getElementById('snd-happy');
+    snd.currentTime = 0; // Reset sound to start (allows rapid fire clicking)
+    snd.play().catch(e => console.log("Audio play blocked or file missing:", e));
+}
+
+function playSadSound() {
+    const snd = document.getElementById('snd-sad');
+    snd.currentTime = 0; 
+    snd.play().catch(e => console.log("Audio play blocked or file missing:", e));
+}
 
         // --- UI UPDATERS ---
         // Update slider values in real-time
@@ -281,4 +282,5 @@
 
     </script>
 </body>
+
 </html>
