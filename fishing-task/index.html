@@ -59,6 +59,14 @@ html, body {
         #message-box { text-align: center; max-width: 600px; }
         #next-pond-btn { margin-top: 20px; background: #007bff; width: auto; padding: 10px 30px; }
 
+		#game-container {
+ 	    flex-grow: 1;
+ 	    position: relative;
+	    background: linear-gradient(to bottom, #87CEEB, #1E90FF);
+	    overflow: hidden; 
+	    height: 100vh; /* Ensures it takes the full height of the window */
+		}
+
     </style>
 </head>
 <body>
@@ -107,7 +115,9 @@ html, body {
 
     <div id="game-container">
         <div id="hud">
-			<button id="travel-btn" onclick="manualTravel()" style="position: absolute; bottom: 20px; right: 20px; padding: 15px 25px; background: #ffc107; border: none; border-radius: 50px; font-weight: bold; cursor: pointer; z-index: 5;">Travel to Next Pond</button>
+			<button id="travel-btn" onclick="manualTravel()" style="position: absolute; bottom: 30px; right: 30px; padding: 20px 30px; background: #FFD700; border: 3px solid #DAA520; border-radius: 15px; font-weight: bold; font-size: 1.2em; cursor: pointer; z-index: 100; box-shadow: 0 4px 8px rgba(0,0,0,0.3);">
+  		      LEAVE POND
+			</button>
             <div>Score: <span id="score">0</span></div>
             <div>Pond: <span id="pond-count">1</span></div>
             <div>Time: <span id="timer">00:00</span></div>
@@ -364,5 +374,6 @@ function playSadSound() {
 </body>
 
 </html>
+
 
 
