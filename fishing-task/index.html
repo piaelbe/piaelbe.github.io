@@ -64,6 +64,45 @@
         #message-box { text-align: center; max-width: 600px; }
         #next-pond-btn { margin-top: 20px; background: #007bff; width: auto; padding: 10px 30px; }
 
+        /* Styling for the transition image */
+        #transition-gif {
+            width: 200px;
+            height: auto;
+            margin-bottom: 20px;
+            border-radius: 10px;
+        }
+        
+        /* The Loading Bar Container */
+        #loading-bar-container {
+            width: 80%;
+            height: 20px;
+            background: #444;
+            border-radius: 10px;
+            overflow: hidden;
+            margin: 20px auto;
+            display: none; /* Hidden until traveling */
+        }
+        
+        /* The actual moving bar */
+        #loading-bar-fill {
+            width: 0%;
+            height: 100%;
+            background: #FFD700;
+            transition: width linear; /* Smooth movement */
+        }
+        
+        /* Replace Emoji styling with Image styling */
+        .entity {
+            position: absolute;
+            width: 60px; /* Adjust based on your PNG size */
+            height: 60px;
+            background-size: contain;
+            background-repeat: no-repeat;
+            cursor: pointer;
+            user-select: none;
+            z-index: 10;
+        }
+
     </style>
 </head>
 <body>
@@ -109,10 +148,17 @@
             🚣 LEAVE POND
         </button>
         
-        <div id="overlay">
+       <div id="overlay">
             <div id="message-box">
+                <img id="transition-gif" src="rowing.gif" style="display:none;">
+                
                 <h1 id="overlay-title">Game Over</h1>
                 <p id="overlay-desc">Final Score: 0</p>
+                
+                <div id="loading-bar-container">
+                    <div id="loading-bar-fill"></div>
+                </div>
+        
                 <button id="next-pond-btn" onclick="nextPond()" style="display:none;">Go to Next Pond</button>
                 <button onclick="closeOverlay()" id="close-overlay-btn" style="display:none;">Close</button>
             </div>
@@ -193,21 +239,29 @@
             updateHUD();
             if (timeLeft <= 0) endGame();
         }
-
+        
         function spawnEntity() {
             if (!gameActive) return;
             const trashRatio = parseInt(document.getElementById('param-ratio').value);
             const isTrash = Math.random() * 100 < trashRatio;
+            
             const entity = document.createElement('div');
             entity.classList.add('entity');
-            entity.innerText = isTrash ? "👞" : "🐟";
-            entity.classList.add(isTrash ? "trash" : "fish");
-
+        
+            // Set background image instead of innerText
+            if (isTrash) {
+                entity.style.backgroundImage = "url('boot.png')";
+                entity.classList.add('trash');
+            } else {
+                entity.style.backgroundImage = "url('fish.png')";
+                entity.classList.add('fish');
+            }
+        
             const maxX = gameContainer.clientWidth - 100;
             const maxY = gameContainer.clientHeight - 100;
             entity.style.left = Math.random() * maxX + 50 + 'px';
             entity.style.top = Math.random() * maxY + 50 + 'px';
-
+        
             entity.onpointerdown = (e) => {
                 e.preventDefault();
                 if (isTrash) {
@@ -221,7 +275,7 @@
                 updateHUD();
                 entity.remove();
             };
-
+        
             gameContainer.appendChild(entity);
             const lifespan = parseInt(document.getElementById('param-life').value);
             setTimeout(() => { if(entity.parentNode) entity.remove(); }, lifespan);
@@ -245,23 +299,42 @@
         function nextPond() {
             const timeSpent = (Date.now() - pondEntryTime) / 1000;
             pondDataLog.push({ pond: currentPond, duration: timeSpent.toFixed(2), caught: fishCaughtInPond });
+            
             currentPond++;
             fishCaughtInPond = 0;
-            overlay.style.display = 'none';
             updateHUD();
-
+        
             const travelCost = parseInt(document.getElementById('param-travel').value) * 1000;
+            
             if (travelCost > 0) {
-                showOverlay("Traveling to new pond...", `Please wait ${travelCost/1000} seconds...`, false);
+                // Show Transition Elements
+                showOverlay("Traveling to new pond...", "", false);
+                document.getElementById('transition-gif').style.display = 'inline-block';
+                document.getElementById('loading-bar-container').style.display = 'block';
                 document.getElementById('close-overlay-btn').style.display = 'none'; 
+                
+                // Reset and animate loading bar
+                const barFill = document.getElementById('loading-bar-fill');
+                barFill.style.transition = 'none';
+                barFill.style.width = '0%';
+                
+                // Force a reflow so the transition works
+                void barFill.offsetWidth; 
+                
+                barFill.style.transition = `width ${travelCost}ms linear`;
+                barFill.style.width = '100%';
+        
                 setTimeout(() => {
                     if(gameActive) {
                         overlay.style.display = 'none';
+                        document.getElementById('transition-gif').style.display = 'none';
+                        document.getElementById('loading-bar-container').style.display = 'none';
                         pondEntryTime = Date.now();
                         startSpawner();
                     }
                 }, travelCost);
             } else {
+                overlay.style.display = 'none';
                 pondEntryTime = Date.now();
                 startSpawner();
             }
@@ -297,3 +370,4 @@
     </script>
 </body>
 </html>
+
