@@ -197,9 +197,15 @@
             snd.play().catch(e => console.log("Audio play blocked:", e));
         }
 
+        // --- UI UPDATERS ---
         document.querySelectorAll('input[type="range"]').forEach(input => {
             input.addEventListener('input', (e) => {
-                document.getElementById('val-' + e.target.id.split('-')[1]).innerText = e.target.value;
+                const displayId = e.target.id.replace('param-', 'val-');
+                const displayElement = document.getElementById(displayId);
+                
+                if (displayElement) {
+                    displayElement.innerText = e.target.value;
+                }
             });
         });
 
@@ -370,5 +376,6 @@
     </script>
 </body>
 </html>
+
 
 
