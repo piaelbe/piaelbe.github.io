@@ -132,14 +132,15 @@
 
         <div id="overlay">
             <div id="message-box">
+                <div id="trophy-display" style="display:none; font-size: 80px; margin-bottom: 20px;">🏆</div>
                 <img id="transition-gif" src="rowing.gif">
-                <h1 id="overlay-title">Ready?</h1>
+                <h1 id="overlay-title"></h1>
                 <p id="overlay-desc"></p>
                 
                 <div id="loading-bar-container">
                     <div id="loading-bar-fill"></div>
                 </div>
-
+        
                 <button id="next-pond-btn" onclick="nextPond()" style="display:none;">Enter New Pond</button>
                 <button id="close-overlay-btn" onclick="closeOverlay()" style="display:none;">Close</button>
             </div>
@@ -148,6 +149,11 @@
 
     <audio id="snd-happy" src="happy.mp3" preload="auto"></audio> 
     <audio id="snd-sad" src="sad.mp3" preload="auto"></audio>
+    <audio id="snd-splish" src="error3.wav" preload="auto"></audio> 
+    <audio id="snd-pond-start" src="startMusic.WAV" preload="auto"></audio>
+    <audio id="snd-tada" src="tada.wav" preload="auto"></audio>
+    <audio id="bg-music" src="stdmire-currently-under-water-239947.mp3" preload="auto" loop></audio>
+    <audio id="snd-travel-ticking" src="dragon-studio-slow-cinematic-clock-ticking-405471.mp3" preload="auto" loop></audio>
 
     <script>
         let gameActive = false;
@@ -155,10 +161,9 @@
         let timeLeft = 0;
         let currentPond = 1;
         let fishCaughtInPond = 0;
-        let pondEntryTime = 0;
         let gameTimerInterval, fishInterval, bootInterval;
-
-        // UI Updaters
+        
+        // 1. UPDATE UI NUMBERS ON SIDEBAR
         document.querySelectorAll('input[type="range"]').forEach(input => {
             input.addEventListener('input', (e) => {
                 const displayId = e.target.id.replace('param-', 'val-');
@@ -167,52 +172,65 @@
                 }
             });
         });
-
+        
+        // 2. BACKGROUND CLICK SOUND (error3.wav)
+        document.getElementById('game-container').addEventListener('pointerdown', (e) => {
+            // Only play if the game is running AND the user clicked the water, not a fish
+            if (gameActive && e.target.id === "game-container") {
+                const splish = document.getElementById('snd-splish');
+                splish.currentTime = 0; // Reset to start so it can play rapidly
+                splish.play();
+            }
+        });
+        
+        // SECTION A: STARTING THE EXPERIMENT
         function startGame() {
             if(gameActive) return;
+            
+            // Reset Variables
             score = 0; currentPond = 1; fishCaughtInPond = 0;
             timeLeft = parseInt(document.getElementById('param-time').value);
+            
+            // Hide Trophy (in case it's a restart)
+            document.getElementById('trophy-display').style.display = 'none';
+            
             updateHUD();
+            
+            // UI Swaps
             document.getElementById('start-btn').style.display = 'none';
             document.getElementById('stop-btn').style.display = 'block';
+            
+            // Music Setup
+            const music = document.getElementById('bg-music');
+            music.volume = 0.2; // Set to 20% volume
+            music.currentTime = 0;
+            music.play();
+        
             gameActive = true;
             gameTimerInterval = setInterval(gameLoop, 1000);
             startSpawner();
         }
-
-        function stopGame() {
-            gameActive = false;
-            clearInterval(gameTimerInterval);
-            clearInterval(fishInterval);
-            clearInterval(bootInterval);
-            document.querySelectorAll('.entity').forEach(e => e.remove());
-            document.getElementById('start-btn').style.display = 'block';
-            document.getElementById('stop-btn').style.display = 'none';
-        }
-
-        // THE ENGINE: TWO SEPARATE TIMERS
+        
+        // THE SPAWNER ENGINE (Handles Seasons)
         function startSpawner() {
             if(fishInterval) clearInterval(fishInterval);
             if(bootInterval) clearInterval(bootInterval);
-
+        
             const baseRate = parseInt(document.getElementById('param-rate').value);
             const season = document.querySelector('input[name="season"]:checked').value;
-
-            // 1. BOOTS: Constant rate (Baseline trash in the pond)
-            // We'll set boots to spawn at 2x the base rate (e.g., 1600ms if base is 800ms)
+        
+            // BOOTS: Constant rate (Baseline trash)
             bootInterval = setInterval(() => spawnEntity('boot'), baseRate * 2.5);
-
-            // 2. FISH: Rates fluctuate based on Season and Pond
+        
+            // FISH: Rates fluctuate based on Season
             let fishRate;
             switch(season) {
-                case 'summer': fishRate = baseRate * 0.8; break; // Constant Fast
-                case 'winter': fishRate = baseRate * 4.0; break; // Constant Slow
+                case 'summer': fishRate = baseRate * 0.8; break; 
+                case 'winter': fishRate = baseRate * 4.0; break; 
                 case 'spring': 
-                    // Gets FASTER per pond (e.g. 3s -> 2.2s -> 1.4s -> 0.6s)
                     fishRate = Math.max(baseRate * 0.6, (baseRate * 4) - (currentPond * (baseRate * 0.8)));
                     break;
                 case 'fall': 
-                    // Gets SLOWER per pond
                     fishRate = Math.min(baseRate * 5, (baseRate * 0.6) + (currentPond * (baseRate * 0.8)));
                     break;
                 default: // Manual Mode
@@ -221,19 +239,21 @@
             }
             fishInterval = setInterval(() => spawnEntity('fish'), fishRate);
         }
-
+        
         function spawnEntity(type) {
             if (!gameActive) return;
             const entity = document.createElement('div');
             entity.classList.add('entity');
             entity.style.backgroundImage = (type === 'boot') ? "url('boot.png')" : "url('fish.png')";
-
+        
             const maxX = document.getElementById('game-container').clientWidth - 100;
             const maxY = document.getElementById('game-container').clientHeight - 100;
             entity.style.left = Math.random() * maxX + 50 + 'px';
             entity.style.top = Math.random() * maxY + 50 + 'px';
-
+        
             entity.onpointerdown = (e) => {
+                e.stopPropagation(); // Prevents the 'error3.wav' splish sound
+                
                 if(type === 'boot') {
                     document.getElementById('snd-sad').play();
                 } else {
@@ -241,82 +261,122 @@
                     score += 10; fishCaughtInPond++;
                     checkPondStatus();
                 }
+                
+                // CATCH ANIMATION
+                entity.classList.add('caught');
+                setTimeout(() => { if(entity.parentNode) entity.remove(); }, 300);
                 updateHUD();
-                entity.remove();
             };
+            
             document.getElementById('game-container').appendChild(entity);
             setTimeout(() => { if(entity.parentNode) entity.remove(); }, 2000);
         }
-
-        function checkPondStatus() {
-            const max = parseInt(document.getElementById('param-max-fish').value);
-            if (fishCaughtInPond >= max) {
-                clearInterval(fishInterval);
-                clearInterval(bootInterval);
-                showOverlay("Pond is Empty!", `You caught ${fishCaughtInPond} fish. Time to move!`, true);
-            }
-        }
-
+        
+        // SECTION B: TRAVELING (Ticking & Start Music)
         function manualTravel() {
             if(!gameActive) return;
-            clearInterval(fishInterval); clearInterval(bootInterval);
+            clearInterval(fishInterval); 
+            clearInterval(bootInterval);
             document.querySelectorAll('.entity').forEach(e => e.remove());
-            nextPond(); // Go straight to travel logic
+            nextPond(); 
         }
-
+        
         function nextPond() {
             currentPond++;
             fishCaughtInPond = 0;
             updateHUD();
             
             const travelTime = parseInt(document.getElementById('param-travel').value) * 1000;
+            const ticking = document.getElementById('snd-travel-ticking');
             
-            showOverlay("Traveling...", "", false);
+            showOverlay("Traveling to New Pond...", "", false);
             document.getElementById('transition-gif').style.display = 'block';
             document.getElementById('loading-bar-container').style.display = 'block';
-
+            
+            // Start Clock Ticking
+            ticking.currentTime = 0;
+            ticking.play();
+        
+            // Loading Bar Logic
             const bar = document.getElementById('loading-bar-fill');
             bar.style.transition = 'none'; bar.style.width = '0%';
-            void bar.offsetWidth;
+            void bar.offsetWidth; 
             bar.style.transition = `width ${travelTime}ms linear`;
             bar.style.width = '100%';
-
+        
             setTimeout(() => {
                 if(!gameActive) return;
+                ticking.pause(); 
+                
+                // Play Entry Sound (startMusic.WAV)
+                document.getElementById('snd-pond-start').play();
+                
                 document.getElementById('overlay').style.display = 'none';
                 document.getElementById('transition-gif').style.display = 'none';
                 document.getElementById('loading-bar-container').style.display = 'none';
                 startSpawner();
             }, travelTime);
         }
-
+        
+        // SECTION C: ENDING THE EXPERIMENT (Tada & Trophy)
         function gameLoop() {
             timeLeft--; updateHUD();
             if (timeLeft <= 0) {
-                stopGame();
-                showOverlay("Experiment Complete", `Total Score: ${score}`, false);
-                document.getElementById('close-overlay-btn').style.display = 'block';
+                endGame();
             }
         }
-
+        
+        function endGame() {
+            gameActive = false;
+            clearInterval(gameTimerInterval);
+            clearInterval(fishInterval);
+            clearInterval(bootInterval);
+            
+            // Clean up sounds
+            document.getElementById('bg-music').pause();
+            document.getElementById('snd-travel-ticking').pause();
+            
+            // Play Final Sound (tada.wav)
+            document.getElementById('snd-tada').play();
+            
+            // Show Results
+            document.getElementById('trophy-display').style.display = 'block';
+            showOverlay("Experiment Complete", `You earned a total score of ${score}!`, false);
+            document.getElementById('close-overlay-btn').style.display = 'block';
+            
+            document.getElementById('start-btn').style.display = 'block';
+            document.getElementById('stop-btn').style.display = 'none';
+        }
+        
+        function checkPondStatus() {
+            const max = parseInt(document.getElementById('param-max-fish').value);
+            if (fishCaughtInPond >= max) {
+                clearInterval(fishInterval);
+                clearInterval(bootInterval);
+                showOverlay("Pond is Empty!", `You've caught everything here. Travel to find more!`, true);
+            }
+        }
+        
         function updateHUD() {
             document.getElementById('score').innerText = score;
             document.getElementById('pond-count').innerText = currentPond;
             let m = Math.floor(timeLeft / 60), s = timeLeft % 60;
             document.getElementById('timer').innerText = `${m}:${s<10?'0':''}${s}`;
         }
-
+        
         function showOverlay(title, desc, showBtn) {
             document.getElementById('overlay-title').innerText = title;
             document.getElementById('overlay-desc').innerText = desc;
             document.getElementById('overlay').style.display = 'flex';
             document.getElementById('next-pond-btn').style.display = showBtn ? 'inline-block' : 'none';
         }
-
+        
+        function stopGame() { endGame(); } // Mapping sidebar stop button to endGame
         function closeOverlay() { document.getElementById('overlay').style.display = 'none'; }
     </script>
 </body>
 </html>
+
 
 
 
