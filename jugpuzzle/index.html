@@ -5,26 +5,19 @@
     <title>Jug Puzzle</title>
     <style>
         :root { --primary: #2196F3; --bg: #f0f2f5; --danger: #ff4444; --success: #4CAF50; }
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: var(--bg); display: flex; margin: 0; height: 100vh; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: var(--bg); display: flex; margin: 0; height: 100vh; overflow: hidden;}
         
-        /* Sidebar Config */
         #config-panel { width: 320px; background: white; padding: 20px; border-right: 1px solid #ddd; overflow-y: auto; box-shadow: 2px 0 5px rgba(0,0,0,0.05); }
         .config-section { margin-bottom: 20px; padding-bottom: 15px; border-bottom: 1px solid #eee; }
-        .input-group { margin-bottom: 15px; }
         label { display: block; font-size: 0.9em; font-weight: bold; margin-bottom: 5px; color: #444; }
         input[type="range"] { width: 100%; }
         .val-disp { float: right; color: var(--primary); }
 
-        /* Difficulty Radio Buttons */
         .radio-group { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 5px; }
-        .radio-group label { 
-            font-weight: normal; background: #eee; padding: 8px; border-radius: 4px; 
-            text-align: center; cursor: pointer; transition: 0.2s; 
-        }
+        .radio-group label { font-weight: normal; background: #eee; padding: 8px; border-radius: 4px; text-align: center; cursor: pointer; }
         .radio-group input { display: none; }
         .radio-group input:checked + label { background: var(--primary); color: white; }
 
-        /* Main Game Area */
         #experiment-area { flex-grow: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; position: relative; }
         
         #travel-overlay { 
@@ -33,19 +26,24 @@
             flex-direction: column; align-items: center; justify-content: center; z-index: 100;
         }
 
-        .jug-container { display: flex; gap: 50px; align-items: flex-end; height: 250px; margin: 40px 0; }
-        .jug { border: 4px solid #333; border-top: none; border-radius: 0 0 10px 10px; width: 80px; position: relative; background: #fff; cursor: pointer; }
+        .jug-container { display: flex; gap: 60px; align-items: flex-end; height: 300px; margin: 20px 0; }
+        .jug-wrapper { display: flex; flex-direction: column; align-items: center; gap: 10px; }
+        .jug { border: 4px solid #333; border-top: none; border-radius: 0 0 10px 10px; width: 90px; position: relative; background: #fff; cursor: pointer; }
         .water { position: absolute; bottom: 0; width: 100%; background: var(--primary); transition: height 0.3s ease; }
-        .selected { border-color: var(--primary); box-shadow: 0 0 15px rgba(33, 150, 243, 0.5); }
-
-        .target-display { font-size: 2em; font-weight: bold; background: #fff; padding: 10px 30px; border-radius: 50px; border: 3px solid #333; }
-        .timer-display { position: absolute; top: 20px; right: 20px; font-size: 1.5em; font-family: monospace; }
         
-        .controls { display: flex; gap: 10px; }
-        button { padding: 12px 24px; font-weight: bold; cursor: pointer; border-radius: 5px; border: none; }
+        /* Liter Counter Text */
+        .liter-text { font-size: 1.2em; font-weight: bold; color: #333; z-index: 5; }
+        .selected { border-color: var(--primary); box-shadow: 0 0 15px rgba(33, 150, 243, 0.4); }
+
+        .target-display { font-size: 2.2em; font-weight: bold; background: #fff; padding: 15px 40px; border-radius: 50px; border: 4px solid #333; margin-bottom: 10px; }
+        .timer-display { position: absolute; top: 20px; right: 20px; font-size: 1.5em; font-family: monospace; background: #333; color: white; padding: 5px 15px; border-radius: 5px; }
+        
+        .controls { display: flex; gap: 15px; margin-top: 20px; }
+        button { padding: 12px 24px; font-weight: bold; cursor: pointer; border-radius: 5px; border: none; transition: transform 0.1s; }
+        button:active { transform: scale(0.95); }
         .btn-action { background: #333; color: white; }
         .btn-leave { background: var(--danger); color: white; }
-        .btn-next { background: var(--success); color: white; display: none; padding: 15px 30px; }
+        .btn-next { background: var(--success); color: white; display: none; font-size: 1.2em; padding: 20px 40px; }
         
         #log-output { width: 100%; height: 120px; margin-top: 10px; font-family: monospace; font-size: 10px; }
     </style>
@@ -57,72 +55,77 @@
     
     <div class="config-section">
         <label>Total Task Time <span class="val-disp" id="totalDisp">300s</span></label>
-        <input type="range" id="totalTime" min="0" max="500" value="300" oninput="updateDisp('totalDisp', this.value + 's')">
+        <input type="range" id="totalTime" min="10" max="500" value="300" oninput="updateDisp('totalDisp', this.value + 's')">
         
         <label style="margin-top:15px;">Travel Time <span class="val-disp" id="travelDisp">3s</span></label>
-        <input type="range" id="travelTime" min="0" max="30s" value="3" oninput="updateDisp('travelDisp', this.value + 's')">
+        <input type="range" id="travelTime" min="0" max="30" value="3" oninput="updateDisp('travelDisp', this.value + 's')">
     </div>
 
     <div class="config-section">
-        <label>Difficulty (Applies to all patches)</label>
+        <label>Difficulty (Global)</label>
         <div class="radio-group">
             <input type="radio" name="diff" id="diffEasy" value="easy" checked>
             <label for="diffEasy">Easy</label>
-            
             <input type="radio" name="diff" id="diffMed" value="medium">
             <label for="diffMed">Medium</label>
-            
             <input type="radio" name="diff" id="diffHard" value="hard">
             <label for="diffHard">Hard</label>
-            
             <input type="radio" name="diff" id="diffImp" value="impossible">
             <label for="diffImp">Impossible</label>
         </div>
     </div>
 
-    <button onclick="startSession()" style="width:100%; background:var(--success); color:white; padding: 15px;">START SESSION</button>
+    <button onclick="startSession()" style="width:100%; background:var(--success); color:white; padding: 15px; font-size: 1em;">START NEW SESSION</button>
     
-    <h4>Session Log</h4>
+    <h4>Move Log</h4>
     <textarea id="log-output" readonly></textarea>
 </div>
 
 <div id="experiment-area">
-    <div class="timer-display">Session: <span id="session-timer">000</span>s</div>
+    <div class="timer-display">TIME: <span id="session-timer">300</span>s</div>
 
     <div id="travel-overlay">
         <h2>Traveling to next patch...</h2>
-        <div id="timer" style="font-size: 3em;">3s</div>
+        <div id="timer" style="font-size: 4em;">3s</div>
     </div>
 
-    <div class="target-display">Goal: <span id="target-val">0</span>L</div>
+    <div class="target-display">GOAL: <span id="target-val">0</span>L</div>
 
     <div class="jug-container">
-        <div id="jugA" class="jug" onclick="selectJug('A')"><div id="waterA" class="water"></div></div>
-        <div id="jugB" class="jug" onclick="selectJug('B')"><div id="waterB" class="water"></div></div>
+        <div class="jug-wrapper">
+            <div class="liter-text"><span id="valA">0</span> / <span id="maxA">5</span>L</div>
+            <div id="jugA" class="jug" onclick="selectJug('A')"><div id="waterA" class="water"></div></div>
+            <div style="font-weight: bold;">Jug A</div>
+        </div>
+        <div class="jug-wrapper">
+            <div class="liter-text"><span id="valB">0</span> / <span id="maxB">3</span>L</div>
+            <div id="jugB" class="jug" onclick="selectJug('B')"><div id="waterB" class="water"></div></div>
+            <div style="font-weight: bold;">Jug B</div>
+        </div>
     </div>
 
     <div class="controls" id="standard-controls">
-        <button class="btn-action" onclick="fillJug()">Fill</button>
-        <button class="btn-action" onclick="transfer()">Pour</button>
-        <button class="btn-action" onclick="emptyJug()">Empty</button>
+        <button class="btn-action" onclick="fillJug()">FILL</button>
+        <button class="btn-action" onclick="transfer()">POUR</button>
+        <button class="btn-action" onclick="emptyJug()">EMPTY</button>
         <button class="btn-leave" onclick="leavePatch(false)">I GIVE UP</button>
     </div>
 
     <button id="next-patch-btn" class="btn-next" onclick="leavePatch(true)">NEXT PUZZLE</button>
     
-    <p id="status">Configure and click Start Session</p>
+    <p id="status" style="margin-top: 20px; font-weight: bold; color: #666;">Ready to start</p>
 </div>
 
 <script>
-    // Audio
-    const sndFill = new Audio('freesound_community-quick-pour-86306.mp3');
-    const sndPour = new Audio('freesound_community-pour-into-glass-107743.mp3');
-    const sndEmpty = new Audio('freesound_community-sink-drain-107853.mp3');
-    const sndGiveUp = new Audio('dumpf.wav');
-    const sndStart = new Audio('startMusic.wav');
-    const sndWin = new Audio('tada.wav');
+    const sounds = {
+        fill: new Audio('freesound_community-quick-pour-86306.mp3'),
+        pour: new Audio('freesound_community-pour-into-glass-107743.mp3'),
+        empty: new Audio('freesound_community-sink-drain-107853.mp3'),
+        giveup: new Audio('dumpf.wav'),
+        start: new Audio('startMusic.wav'),
+        win: new Audio('tada.wav')
+    };
 
-    // Difficulty Mapping: [CapA, CapB, Target]
     const difficultyMap = {
         easy: [5, 2, 3],
         medium: [5, 3, 4],
@@ -131,53 +134,44 @@
     };
 
     let state = { 
-        curA: 0, curB: 0, selected: 'A', startTime: 0, 
-        lastMoveTime: 0, solved: false, sessionRunning: false,
-        timeLeft: 0
+        curA: 0, curB: 0, selected: 'A', 
+        startTime: 0, sessionRunning: false, timeLeft: 0 
     };
     let log = [];
+    let timerId = null;
 
     function updateDisp(id, val) { document.getElementById(id).innerText = val; }
 
     function logEvent(event) {
-        const now = Date.now();
-        const entry = {
-            time: (now - state.startTime) / 1000,
-            event: event,
-            jugA: state.curA,
-            jugB: state.curB
-        };
+        const entry = `${event} [${state.curA},${state.curB}]`;
         log.push(entry);
-        document.getElementById('log-output').value = log.map(e => `${e.event} [${e.jugA},${e.jugB}]`).join('\n');
-        document.getElementById('log-output').scrollTop = document.getElementById('log-output').scrollHeight;
+        const logBox = document.getElementById('log-output');
+        logBox.value = log.join('\n');
+        logBox.scrollTop = logBox.scrollHeight;
     }
 
     function startSession() {
+        if(timerId) clearInterval(timerId);
         state.sessionRunning = true;
         state.timeLeft = parseInt(document.getElementById('totalTime').value);
         log = [];
-        logEvent("Session Started");
+        logEvent("--- Session Started ---");
         
-        const timerInterval = setInterval(() => {
+        timerId = setInterval(() => {
             state.timeLeft--;
             document.getElementById('session-timer').innerText = state.timeLeft;
             if (state.timeLeft <= 0) {
-                clearInterval(timerInterval);
-                endSession();
+                clearInterval(timerId);
+                state.sessionRunning = false;
+                alert("Task Time Limit Reached.");
             }
         }, 1000);
 
         startNewPatch();
     }
 
-    function endSession() {
-        state.sessionRunning = false;
-        alert("Session Complete! Data Logged.");
-    }
-
     function startNewPatch() {
         if(!state.sessionRunning) return;
-        
         const diff = document.querySelector('input[name="diff"]:checked').value;
         const [capA, capB, target] = difficultyMap[diff];
         
@@ -186,21 +180,23 @@
 
         document.getElementById('next-patch-btn').style.display = 'none';
         document.getElementById('standard-controls').style.display = 'flex';
-        document.getElementById('status').innerText = "Difficulty: " + diff.toUpperCase();
+        document.getElementById('status').innerText = "Trial active: " + diff.toUpperCase();
         
         const maxV = Math.max(capA, capB);
-        document.getElementById('jugA').style.height = (capA/maxV * 200) + 'px';
-        document.getElementById('jugB').style.height = (capB/maxV * 200) + 'px';
+        document.getElementById('jugA').style.height = (capA/maxV * 240) + 'px';
+        document.getElementById('jugB').style.height = (capB/maxV * 240) + 'px';
+        document.getElementById('maxA').innerText = capA;
+        document.getElementById('maxB').innerText = capB;
         document.getElementById('target-val').innerText = target;
         
         updateUI();
-        sndStart.play();
-        logEvent("New Patch: " + diff);
+        sounds.start.play();
+        logEvent("Patch Loaded");
     }
 
     function leavePatch(wasSolved) {
-        if (!wasSolved) { sndGiveUp.play(); logEvent("Gave Up"); }
-        else { logEvent("Solved Success"); }
+        if (!wasSolved) { sounds.giveup.play(); logEvent("User Gave Up"); }
+        else { logEvent("Patch Completed"); }
 
         const travelSec = parseInt(document.getElementById('travelTime').value);
         if (travelSec === 0) { startNewPatch(); return; }
@@ -224,23 +220,22 @@
     function selectJug(id) {
         if (state.solved) return;
         state.selected = id;
-        document.getElementById('jugA').className = id === 'A' ? 'jug selected' : 'jug';
-        document.getElementById('jugB').className = id === 'B' ? 'jug selected' : 'jug';
+        document.getElementById('jugA').classList.toggle('selected', id === 'A');
+        document.getElementById('jugB').classList.toggle('selected', id === 'B');
     }
 
     function fillJug() {
         if (!state.sessionRunning || state.solved) return;
-        const cap = state.selected === 'A' ? state.capA : state.capB;
-        if (state.selected === 'A') state.curA = cap; else state.curB = cap;
-        sndFill.play();
+        state.selected === 'A' ? state.curA = state.capA : state.curB = state.capB;
+        sounds.fill.play();
         logEvent("Fill " + state.selected);
         updateUI();
     }
 
     function emptyJug() {
         if (!state.sessionRunning || state.solved) return;
-        if (state.selected === 'A') state.curA = 0; else state.curB = 0;
-        sndEmpty.play();
+        state.selected === 'A' ? state.curA = 0 : state.curB = 0;
+        sounds.empty.play();
         logEvent("Empty " + state.selected);
         updateUI();
     }
@@ -254,7 +249,7 @@
             let move = Math.min(state.curB, state.capA - state.curA);
             state.curB -= move; state.curA += move;
         }
-        sndPour.play();
+        sounds.pour.play();
         logEvent("Transfer");
         updateUI();
     }
@@ -262,13 +257,15 @@
     function updateUI() {
         document.getElementById('waterA').style.height = (state.curA / state.capA * 100) + '%';
         document.getElementById('waterB').style.height = (state.curB / state.capB * 100) + '%';
+        document.getElementById('valA').innerText = state.curA;
+        document.getElementById('valB').innerText = state.curB;
         
         if (!state.solved && (state.curA === state.target || state.curB === state.target)) {
             state.solved = true;
-            document.getElementById('status').innerText = "Solved!";
+            document.getElementById('status').innerText = "Target Reached!";
             document.getElementById('standard-controls').style.display = 'none';
             document.getElementById('next-patch-btn').style.display = 'block';
-            sndWin.play();
+            sounds.win.play();
         }
     }
 </script>
