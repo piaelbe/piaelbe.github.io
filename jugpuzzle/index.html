@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <title>Jug Puzzle</title>
     <style>
-        :root { --primary: #2196F3; --bg: #f0f2f5; --danger: #ff4444; }
+        :root { --primary: #2196F3; --bg: #f0f2f5; --danger: #ff4444; --success: #4CAF50; }
         body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: var(--bg); display: flex; margin: 0; height: 100vh; }
         
         /* Sidebar Config */
@@ -32,6 +32,7 @@
         button { padding: 12px 24px; font-weight: bold; cursor: pointer; border-radius: 5px; border: none; }
         .btn-action { background: #333; color: white; }
         .btn-leave { background: var(--danger); color: white; }
+        .btn-next { background: var(--success); color: white; display: none; }
         
         #log-output { width: 100%; height: 100px; margin-top: 20px; font-family: monospace; font-size: 10px; }
     </style>
@@ -65,18 +66,28 @@
         <div id="jugB" class="jug" onclick="selectJug('B')"><div id="waterB" class="water"></div></div>
     </div>
 
-    <div class="controls">
+    <div class="controls" id="standard-controls">
         <button class="btn-action" onclick="fillJug()">Fill</button>
         <button class="btn-action" onclick="transfer()">Pour</button>
         <button class="btn-action" onclick="emptyJug()">Empty</button>
-        <button class="btn-leave" onclick="leavePatch()">I GIVE UP</button>
+        <button class="btn-leave" onclick="leavePatch(false)">I GIVE UP</button>
     </div>
+
+    <button id="next-patch-btn" class="btn-next" onclick="leavePatch(true)">NEXT PUZZLE</button>
     
     <p id="status">Select a jug to begin.</p>
 </div>
 
 <script>
-    let state = { curA: 0, curB: 0, selected: 'A', startTime: 0, lastMoveTime: 0 };
+    // Audio Setup
+    const sndFill = new Audio('freesound_community-quick-pour-86306.mp3');
+    const sndPour = new Audio('freesound_community-pour-into-glass-107743.mp3');
+    const sndEmpty = new Audio('freesound_community-sink-drain-107853.mp3');
+    const sndGiveUp = new Audio('dumpf.wav');
+    const sndStart = new Audio('startMusic.wav');
+    const sndWin = new Audio('tada.wav');
+
+    let state = { curA: 0, curB: 0, selected: 'A', startTime: 0, lastMoveTime: 0, solved: false };
     let log = [];
 
     function logEvent(event) {
@@ -98,6 +109,11 @@
         state.lastMoveTime = state.startTime;
         state.curA = 0;
         state.curB = 0;
+        state.solved = false;
+
+        document.getElementById('next-patch-btn').style.display = 'none';
+        document.getElementById('standard-controls').style.display = 'flex';
+        document.getElementById('status').innerText = "Select a jug to begin.";
         
         const capA = parseInt(document.getElementById('capA').value);
         const capB = parseInt(document.getElementById('capB').value);
@@ -108,16 +124,24 @@
         document.getElementById('target-val').innerText = document.getElementById('target').value;
         
         updateUI();
+        sndStart.play();
         logEvent("Started New Patch");
     }
 
-    function leavePatch() {
-        logEvent("Gave Up / Left Patch");
+    function leavePatch(wasSolved) {
+        if (!wasSolved) {
+            sndGiveUp.play();
+            logEvent("Gave Up / Left Patch");
+        } else {
+            logEvent("Moved to Next Patch after Win");
+        }
+
         const travelSec = parseInt(document.getElementById('travelTime').value);
         const overlay = document.getElementById('travel-overlay');
         overlay.style.display = 'flex';
         
         let remaining = travelSec;
+        document.getElementById('timer').innerText = remaining + "s";
         const interval = setInterval(() => {
             remaining--;
             document.getElementById('timer').innerText = remaining + "s";
@@ -130,25 +154,31 @@
     }
 
     function selectJug(id) {
+        if (state.solved) return;
         state.selected = id;
         document.getElementById('jugA').className = id === 'A' ? 'jug selected' : 'jug';
         document.getElementById('jugB').className = id === 'B' ? 'jug selected' : 'jug';
     }
 
     function fillJug() {
+        if (state.solved) return;
         const cap = state.selected === 'A' ? parseInt(document.getElementById('capA').value) : parseInt(document.getElementById('capB').value);
         if (state.selected === 'A') state.curA = cap; else state.curB = cap;
+        sndFill.play();
         logEvent("Fill " + state.selected);
         updateUI();
     }
 
     function emptyJug() {
+        if (state.solved) return;
         if (state.selected === 'A') state.curA = 0; else state.curB = 0;
+        sndEmpty.play();
         logEvent("Empty " + state.selected);
         updateUI();
     }
 
     function transfer() {
+        if (state.solved) return;
         const capA = parseInt(document.getElementById('capA').value);
         const capB = parseInt(document.getElementById('capB').value);
         if (state.selected === 'A') {
@@ -158,6 +188,7 @@
             let move = Math.min(state.curB, capA - state.curA);
             state.curB -= move; state.curA += move;
         }
+        sndPour.play();
         logEvent("Transfer");
         updateUI();
     }
@@ -170,14 +201,20 @@
         document.getElementById('waterA').style.height = (state.curA / capA * 100) + '%';
         document.getElementById('waterB').style.height = (state.curB / capB * 100) + '%';
         
-        if (state.curA === target || state.curB === target) {
+        if (!state.solved && (state.curA === target || state.curB === target)) {
+            state.solved = true;
             document.getElementById('status').innerText = "Solved! Good work!";
+            document.getElementById('standard-controls').style.display = 'none';
+            document.getElementById('next-patch-btn').style.display = 'block';
+            sndWin.play();
             logEvent("Solved");
         }
     }
 
-    startNewPatch();
+    // Initialize with a click to satisfy browser audio policies
+    window.onclick = () => {
+        if (state.startTime === 0) startNewPatch();
+    };
 </script>
 </body>
 </html>
-
