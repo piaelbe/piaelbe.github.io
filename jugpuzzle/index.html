@@ -8,17 +8,29 @@
         body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: var(--bg); display: flex; margin: 0; height: 100vh; }
         
         /* Sidebar Config */
-        #config-panel { width: 300px; background: white; padding: 20px; border-right: 1px solid #ddd; overflow-y: auto; }
+        #config-panel { width: 320px; background: white; padding: 20px; border-right: 1px solid #ddd; overflow-y: auto; box-shadow: 2px 0 5px rgba(0,0,0,0.05); }
+        .config-section { margin-bottom: 20px; padding-bottom: 15px; border-bottom: 1px solid #eee; }
         .input-group { margin-bottom: 15px; }
-        input { width: 100%; padding: 5px; margin-top: 5px; }
+        label { display: block; font-size: 0.9em; font-weight: bold; margin-bottom: 5px; color: #444; }
+        input[type="range"] { width: 100%; }
+        .val-disp { float: right; color: var(--primary); }
+
+        /* Difficulty Radio Buttons */
+        .radio-group { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 5px; }
+        .radio-group label { 
+            font-weight: normal; background: #eee; padding: 8px; border-radius: 4px; 
+            text-align: center; cursor: pointer; transition: 0.2s; 
+        }
+        .radio-group input { display: none; }
+        .radio-group input:checked + label { background: var(--primary); color: white; }
 
         /* Main Game Area */
         #experiment-area { flex-grow: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; position: relative; }
         
         #travel-overlay { 
             position: absolute; top: 0; left: 0; width: 100%; height: 100%; 
-            background: rgba(0,0,0,0.8); color: white; display: none; 
-            flex-direction: column; align-items: center; justify-content: center; z-index: 10;
+            background: rgba(0,0,0,0.85); color: white; display: none; 
+            flex-direction: column; align-items: center; justify-content: center; z-index: 100;
         }
 
         .jug-container { display: flex; gap: 50px; align-items: flex-end; height: 250px; margin: 40px 0; }
@@ -27,39 +39,62 @@
         .selected { border-color: var(--primary); box-shadow: 0 0 15px rgba(33, 150, 243, 0.5); }
 
         .target-display { font-size: 2em; font-weight: bold; background: #fff; padding: 10px 30px; border-radius: 50px; border: 3px solid #333; }
+        .timer-display { position: absolute; top: 20px; right: 20px; font-size: 1.5em; font-family: monospace; }
         
         .controls { display: flex; gap: 10px; }
         button { padding: 12px 24px; font-weight: bold; cursor: pointer; border-radius: 5px; border: none; }
         .btn-action { background: #333; color: white; }
         .btn-leave { background: var(--danger); color: white; }
-        .btn-next { background: var(--success); color: white; display: none; }
+        .btn-next { background: var(--success); color: white; display: none; padding: 15px 30px; }
         
-        #log-output { width: 100%; height: 100px; margin-top: 20px; font-family: monospace; font-size: 10px; }
+        #log-output { width: 100%; height: 120px; margin-top: 10px; font-family: monospace; font-size: 10px; }
     </style>
 </head>
 <body>
 
 <div id="config-panel">
-    <h3>Patch Config</h3>
-    <div class="input-group">Travel Time (sec): <input type="number" id="travelTime" value="3"></div>
-    <hr>
-    <h4>Current Patch Settings</h4>
-    <div class="input-group">Jug A Cap: <input type="number" id="capA" value="5"></div>
-    <div class="input-group">Jug B Cap: <input type="number" id="capB" value="3"></div>
-    <div class="input-group">Target: <input type="number" id="target" value="4"></div>
-    <button onclick="startNewPatch()" style="width:100%; background:#4CAF50; color:white;">Load Patch</button>
+    <h3>Experiment Config</h3>
+    
+    <div class="config-section">
+        <label>Total Task Time <span class="val-disp" id="totalDisp">300s</span></label>
+        <input type="range" id="totalTime" min="0" max="500" value="300" oninput="updateDisp('totalDisp', this.value + 's')">
+        
+        <label style="margin-top:15px;">Travel Time <span class="val-disp" id="travelDisp">3s</span></label>
+        <input type="range" id="travelTime" min="0" max="30s" value="3" oninput="updateDisp('travelDisp', this.value + 's')">
+    </div>
+
+    <div class="config-section">
+        <label>Difficulty (Applies to all patches)</label>
+        <div class="radio-group">
+            <input type="radio" name="diff" id="diffEasy" value="easy" checked>
+            <label for="diffEasy">Easy</label>
+            
+            <input type="radio" name="diff" id="diffMed" value="medium">
+            <label for="diffMed">Medium</label>
+            
+            <input type="radio" name="diff" id="diffHard" value="hard">
+            <label for="diffHard">Hard</label>
+            
+            <input type="radio" name="diff" id="diffImp" value="impossible">
+            <label for="diffImp">Impossible</label>
+        </div>
+    </div>
+
+    <button onclick="startSession()" style="width:100%; background:var(--success); color:white; padding: 15px;">START SESSION</button>
     
     <h4>Session Log</h4>
     <textarea id="log-output" readonly></textarea>
 </div>
 
 <div id="experiment-area">
+    <div class="timer-display">Session: <span id="session-timer">000</span>s</div>
+
     <div id="travel-overlay">
         <h2>Traveling to next patch...</h2>
-        <div id="timer">3s</div>
+        <div id="timer" style="font-size: 3em;">3s</div>
     </div>
 
-    <div class="target-display">Goal: <span id="target-val">4</span>L</div>
+    <div class="target-display">Goal: <span id="target-val">0</span>L</div>
 
     <div class="jug-container">
         <div id="jugA" class="jug" onclick="selectJug('A')"><div id="waterA" class="water"></div></div>
@@ -75,20 +110,34 @@
 
     <button id="next-patch-btn" class="btn-next" onclick="leavePatch(true)">NEXT PUZZLE</button>
     
-    <p id="status">Select a jug to begin.</p>
+    <p id="status">Configure and click Start Session</p>
 </div>
 
 <script>
-    // Audio Setup
+    // Audio
     const sndFill = new Audio('freesound_community-quick-pour-86306.mp3');
     const sndPour = new Audio('freesound_community-pour-into-glass-107743.mp3');
     const sndEmpty = new Audio('freesound_community-sink-drain-107853.mp3');
     const sndGiveUp = new Audio('dumpf.wav');
-    const sndStart = new Audio('startMusic.WAV');
+    const sndStart = new Audio('startMusic.wav');
     const sndWin = new Audio('tada.wav');
 
-    let state = { curA: 0, curB: 0, selected: 'A', startTime: 0, lastMoveTime: 0, solved: false };
+    // Difficulty Mapping: [CapA, CapB, Target]
+    const difficultyMap = {
+        easy: [5, 2, 3],
+        medium: [5, 3, 4],
+        hard: [9, 4, 6],
+        impossible: [6, 4, 3]
+    };
+
+    let state = { 
+        curA: 0, curB: 0, selected: 'A', startTime: 0, 
+        lastMoveTime: 0, solved: false, sessionRunning: false,
+        timeLeft: 0
+    };
     let log = [];
+
+    function updateDisp(id, val) { document.getElementById(id).innerText = val; }
 
     function logEvent(event) {
         const now = Date.now();
@@ -96,47 +145,66 @@
             time: (now - state.startTime) / 1000,
             event: event,
             jugA: state.curA,
-            jugB: state.curB,
-            gapSinceLastMove: (now - state.lastMoveTime) / 1000
+            jugB: state.curB
         };
         log.push(entry);
-        state.lastMoveTime = now;
-        document.getElementById('log-output').value = log.map(e => `${e.time}s: ${e.event} [${e.jugA},${e.jugB}]`).join('\n');
+        document.getElementById('log-output').value = log.map(e => `${e.event} [${e.jugA},${e.jugB}]`).join('\n');
+        document.getElementById('log-output').scrollTop = document.getElementById('log-output').scrollHeight;
+    }
+
+    function startSession() {
+        state.sessionRunning = true;
+        state.timeLeft = parseInt(document.getElementById('totalTime').value);
+        log = [];
+        logEvent("Session Started");
+        
+        const timerInterval = setInterval(() => {
+            state.timeLeft--;
+            document.getElementById('session-timer').innerText = state.timeLeft;
+            if (state.timeLeft <= 0) {
+                clearInterval(timerInterval);
+                endSession();
+            }
+        }, 1000);
+
+        startNewPatch();
+    }
+
+    function endSession() {
+        state.sessionRunning = false;
+        alert("Session Complete! Data Logged.");
     }
 
     function startNewPatch() {
-        state.startTime = Date.now();
-        state.lastMoveTime = state.startTime;
-        state.curA = 0;
-        state.curB = 0;
-        state.solved = false;
+        if(!state.sessionRunning) return;
+        
+        const diff = document.querySelector('input[name="diff"]:checked').value;
+        const [capA, capB, target] = difficultyMap[diff];
+        
+        state.curA = 0; state.curB = 0; state.solved = false;
+        state.capA = capA; state.capB = capB; state.target = target;
 
         document.getElementById('next-patch-btn').style.display = 'none';
         document.getElementById('standard-controls').style.display = 'flex';
-        document.getElementById('status').innerText = "Select a jug to begin.";
+        document.getElementById('status').innerText = "Difficulty: " + diff.toUpperCase();
         
-        const capA = parseInt(document.getElementById('capA').value);
-        const capB = parseInt(document.getElementById('capB').value);
         const maxV = Math.max(capA, capB);
-        
         document.getElementById('jugA').style.height = (capA/maxV * 200) + 'px';
         document.getElementById('jugB').style.height = (capB/maxV * 200) + 'px';
-        document.getElementById('target-val').innerText = document.getElementById('target').value;
+        document.getElementById('target-val').innerText = target;
         
         updateUI();
         sndStart.play();
-        logEvent("Started New Patch");
+        logEvent("New Patch: " + diff);
     }
 
     function leavePatch(wasSolved) {
-        if (!wasSolved) {
-            sndGiveUp.play();
-            logEvent("Gave Up / Left Patch");
-        } else {
-            logEvent("Moved to Next Patch after Win");
-        }
+        if (!wasSolved) { sndGiveUp.play(); logEvent("Gave Up"); }
+        else { logEvent("Solved Success"); }
 
         const travelSec = parseInt(document.getElementById('travelTime').value);
+        if (travelSec === 0) { startNewPatch(); return; }
+
         const overlay = document.getElementById('travel-overlay');
         overlay.style.display = 'flex';
         
@@ -144,7 +212,7 @@
         document.getElementById('timer').innerText = remaining + "s";
         const interval = setInterval(() => {
             remaining--;
-            document.getElementById('timer').innerText = remaining + "s";
+            document.getElementById('timer').innerText = Math.max(0, remaining) + "s";
             if (remaining <= 0) {
                 clearInterval(interval);
                 overlay.style.display = 'none';
@@ -161,8 +229,8 @@
     }
 
     function fillJug() {
-        if (state.solved) return;
-        const cap = state.selected === 'A' ? parseInt(document.getElementById('capA').value) : parseInt(document.getElementById('capB').value);
+        if (!state.sessionRunning || state.solved) return;
+        const cap = state.selected === 'A' ? state.capA : state.capB;
         if (state.selected === 'A') state.curA = cap; else state.curB = cap;
         sndFill.play();
         logEvent("Fill " + state.selected);
@@ -170,7 +238,7 @@
     }
 
     function emptyJug() {
-        if (state.solved) return;
+        if (!state.sessionRunning || state.solved) return;
         if (state.selected === 'A') state.curA = 0; else state.curB = 0;
         sndEmpty.play();
         logEvent("Empty " + state.selected);
@@ -178,14 +246,12 @@
     }
 
     function transfer() {
-        if (state.solved) return;
-        const capA = parseInt(document.getElementById('capA').value);
-        const capB = parseInt(document.getElementById('capB').value);
+        if (!state.sessionRunning || state.solved) return;
         if (state.selected === 'A') {
-            let move = Math.min(state.curA, capB - state.curB);
+            let move = Math.min(state.curA, state.capB - state.curB);
             state.curA -= move; state.curB += move;
         } else {
-            let move = Math.min(state.curB, capA - state.curA);
+            let move = Math.min(state.curB, state.capA - state.curA);
             state.curB -= move; state.curA += move;
         }
         sndPour.play();
@@ -194,28 +260,17 @@
     }
 
     function updateUI() {
-        const capA = parseInt(document.getElementById('capA').value);
-        const capB = parseInt(document.getElementById('capB').value);
-        const target = parseInt(document.getElementById('target').value);
-
-        document.getElementById('waterA').style.height = (state.curA / capA * 100) + '%';
-        document.getElementById('waterB').style.height = (state.curB / capB * 100) + '%';
+        document.getElementById('waterA').style.height = (state.curA / state.capA * 100) + '%';
+        document.getElementById('waterB').style.height = (state.curB / state.capB * 100) + '%';
         
-        if (!state.solved && (state.curA === target || state.curB === target)) {
+        if (!state.solved && (state.curA === state.target || state.curB === state.target)) {
             state.solved = true;
-            document.getElementById('status').innerText = "Solved! Good work!";
+            document.getElementById('status').innerText = "Solved!";
             document.getElementById('standard-controls').style.display = 'none';
             document.getElementById('next-patch-btn').style.display = 'block';
             sndWin.play();
-            logEvent("Solved");
         }
     }
-
-    // Initialize with a click to satisfy browser audio policies
-    window.onclick = () => {
-        if (state.startTime === 0) startNewPatch();
-    };
 </script>
 </body>
 </html>
-
