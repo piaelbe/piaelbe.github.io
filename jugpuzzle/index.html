@@ -2,127 +2,181 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Foraging Research: Water Jug Task</title>
+    <title>Neth-Style Water Jug Foraging</title>
     <style>
-        :root { --primary: #2196F3; --bg: #f4f4f9; }
-        body { font-family: sans-serif; background: var(--bg); display: flex; flex-direction: column; align-items: center; }
+        :root { --primary: #2196F3; --bg: #f0f2f5; --danger: #ff4444; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: var(--bg); display: flex; margin: 0; height: 100vh; }
         
-        #config-panel { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); margin: 20px; width: 350px; }
-        .input-group { margin-bottom: 10px; display: flex; justify-content: space-between; }
-        
-        #game-container { display: flex; gap: 40px; margin-top: 30px; align-items: flex-end; height: 300px; }
-        .jug-wrapper { display: flex; flex-direction: column; align-items: center; }
-        .jug { border: 4px solid #333; border-top: none; border-radius: 0 0 10px 10px; width: 100px; position: relative; background: #fff; cursor: pointer; transition: transform 0.1s; }
-        .jug:hover { transform: scale(1.05); }
-        .water { position: absolute; bottom: 0; width: 100%; background: var(--primary); transition: height 0.3s ease; }
-        .label { margin-top: 10px; font-weight: bold; }
+        /* Sidebar Config */
+        #config-panel { width: 300px; background: white; padding: 20px; border-right: 1px solid #ddd; overflow-y: auto; }
+        .input-group { margin-bottom: 15px; }
+        input { width: 100%; padding: 5px; margin-top: 5px; }
 
-        .controls { margin-top: 30px; display: flex; gap: 10px; }
-        button { padding: 10px 20px; cursor: pointer; border-radius: 5px; border: none; background: #333; color: white; }
-        button:hover { background: #555; }
-        #status-msg { margin-top: 20px; font-size: 1.2em; color: #2c3e50; font-weight: bold; }
-        .target-box { background: #ffd700; padding: 15px; border-radius: 8px; font-size: 1.5em; margin-top: 10px; }
+        /* Main Game Area */
+        #experiment-area { flex-grow: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; position: relative; }
+        
+        #travel-overlay { 
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%; 
+            background: rgba(0,0,0,0.8); color: white; display: none; 
+            flex-direction: column; align-items: center; justify-content: center; z-index: 10;
+        }
+
+        .jug-container { display: flex; gap: 50px; align-items: flex-end; height: 250px; margin: 40px 0; }
+        .jug { border: 4px solid #333; border-top: none; border-radius: 0 0 10px 10px; width: 80px; position: relative; background: #fff; cursor: pointer; }
+        .water { position: absolute; bottom: 0; width: 100%; background: var(--primary); transition: height 0.3s ease; }
+        .selected { border-color: var(--primary); box-shadow: 0 0 15px rgba(33, 150, 243, 0.5); }
+
+        .target-display { font-size: 2em; font-weight: bold; background: #fff; padding: 10px 30px; border-radius: 50px; border: 3px solid #333; }
+        
+        .controls { display: flex; gap: 10px; }
+        button { padding: 12px 24px; font-weight: bold; cursor: pointer; border-radius: 5px; border: none; }
+        .btn-action { background: #333; color: white; }
+        .btn-leave { background: var(--danger); color: white; }
+        
+        #log-output { width: 100%; height: 100px; margin-top: 20px; font-family: monospace; font-size: 10px; }
     </style>
 </head>
 <body>
 
 <div id="config-panel">
-    <h3>Experiment Config</h3>
-    <div class="input-group">Capacity Jug A: <input type="number" id="capA" value="5"></div>
-    <div class="input-group">Capacity Jug B: <input type="number" id="capB" value="3"></div>
-    <div class="input-group">Target Amount: <input type="number" id="target" value="4"></div>
-    <p style="font-size: 0.8em; color: #666;">*If Target isn't a multiple of GCD(A,B), it's impossible.</p>
-    <button onclick="initGame()" style="width: 100%; background: #4CAF50;">Start New Trial</button>
+    <h3>Patch Config</h3>
+    <div class="input-group">Travel Time (sec): <input type="number" id="travelTime" value="3"></div>
+    <hr>
+    <h4>Current Patch Settings</h4>
+    <div class="input-group">Jug A Cap: <input type="number" id="capA" value="5"></div>
+    <div class="input-group">Jug B Cap: <input type="number" id="capB" value="3"></div>
+    <div class="input-group">Target: <input type="number" id="target" value="4"></div>
+    <button onclick="startNewPatch()" style="width:100%; background:#4CAF50; color:white;">Load Patch</button>
+    
+    <h4>Session Log</h4>
+    <textarea id="log-output" readonly></textarea>
 </div>
 
-<div class="target-box">Target: <span id="target-val">0</span>L</div>
+<div id="experiment-area">
+    <div id="travel-overlay">
+        <h2>Traveling to next patch...</h2>
+        <div id="timer">3s</div>
+    </div>
 
-<div id="game-container">
-    <div class="jug-wrapper">
+    <div class="target-display">Goal: <span id="target-val">4</span>L</div>
+
+    <div class="jug-container">
         <div id="jugA" class="jug" onclick="selectJug('A')"><div id="waterA" class="water"></div></div>
-        <div class="label">Jug A (<span id="curA">0</span>/<span id="maxA">0</span>L)</div>
-    </div>
-    <div class="jug-wrapper">
         <div id="jugB" class="jug" onclick="selectJug('B')"><div id="waterB" class="water"></div></div>
-        <div class="label">Jug B (<span id="curB">0</span>/<span id="maxB">0</span>L)</div>
     </div>
-</div>
 
-<div class="controls">
-    <button onclick="fillJug()">Fill Selected</button>
-    <button onclick="emptyJug()">Empty Selected</button>
-    <button onclick="transfer()">Pour into Other</button>
+    <div class="controls">
+        <button class="btn-action" onclick="fillJug()">Fill</button>
+        <button class="btn-action" onclick="transfer()">Pour</button>
+        <button class="btn-action" onclick="emptyJug()">Empty</button>
+        <button class="btn-leave" onclick="leavePatch()">LEAVE PATCH (Costly)</button>
+    </div>
+    
+    <p id="status">Select a jug to begin.</p>
 </div>
-
-<div id="status-msg">Click a jug to select it.</div>
 
 <script>
-    let state = { capA: 5, capB: 3, curA: 0, curB: 0, target: 4, selected: 'A' };
+    let state = { curA: 0, curB: 0, selected: 'A', startTime: 0, lastMoveTime: 0 };
+    let log = [];
 
-    function initGame() {
-        state.capA = parseInt(document.getElementById('capA').value);
-        state.capB = parseInt(document.getElementById('capB').value);
-        state.target = parseInt(document.getElementById('target').value);
+    function logEvent(event) {
+        const now = Date.now();
+        const entry = {
+            time: (now - state.startTime) / 1000,
+            event: event,
+            jugA: state.curA,
+            jugB: state.curB,
+            gapSinceLastMove: (now - state.lastMoveTime) / 1000
+        };
+        log.push(entry);
+        state.lastMoveTime = now;
+        document.getElementById('log-output').value = log.map(e => `${e.time}s: ${e.event} [${e.jugA},${e.jugB}]`).join('\n');
+    }
+
+    function startNewPatch() {
+        state.startTime = Date.now();
+        state.lastMoveTime = state.startTime;
         state.curA = 0;
         state.curB = 0;
         
-        // Dynamic Height UI
-        const maxVisual = Math.max(state.capA, state.capB);
-        document.getElementById('jugA').style.height = (state.capA / maxVisual * 200) + 'px';
-        document.getElementById('jugB').style.height = (state.capB / maxVisual * 200) + 'px';
+        const capA = parseInt(document.getElementById('capA').value);
+        const capB = parseInt(document.getElementById('capB').value);
+        const maxV = Math.max(capA, capB);
+        
+        document.getElementById('jugA').style.height = (capA/maxV * 200) + 'px';
+        document.getElementById('jugB').style.height = (capB/maxV * 200) + 'px';
+        document.getElementById('target-val').innerText = document.getElementById('target').value;
         
         updateUI();
-        document.getElementById('status-msg').innerText = "Trial Started!";
+        logEvent("Started New Patch");
+    }
+
+    function leavePatch() {
+        logEvent("Gave Up / Left Patch");
+        const travelSec = parseInt(document.getElementById('travelTime').value);
+        const overlay = document.getElementById('travel-overlay');
+        overlay.style.display = 'flex';
+        
+        let remaining = travelSec;
+        const interval = setInterval(() => {
+            remaining--;
+            document.getElementById('timer').innerText = remaining + "s";
+            if (remaining <= 0) {
+                clearInterval(interval);
+                overlay.style.display = 'none';
+                startNewPatch();
+            }
+        }, 1000);
     }
 
     function selectJug(id) {
         state.selected = id;
-        document.getElementById('jugA').style.borderColor = state.selected === 'A' ? '#2196F3' : '#333';
-        document.getElementById('jugB').style.borderColor = state.selected === 'B' ? '#2196F3' : '#333';
+        document.getElementById('jugA').className = id === 'A' ? 'jug selected' : 'jug';
+        document.getElementById('jugB').className = id === 'B' ? 'jug selected' : 'jug';
     }
 
     function fillJug() {
-        if (state.selected === 'A') state.curA = state.capA;
-        else state.curB = state.capB;
+        const cap = state.selected === 'A' ? parseInt(document.getElementById('capA').value) : parseInt(document.getElementById('capB').value);
+        if (state.selected === 'A') state.curA = cap; else state.curB = cap;
+        logEvent("Fill " + state.selected);
         updateUI();
     }
 
     function emptyJug() {
-        if (state.selected === 'A') state.curA = 0;
-        else state.curB = 0;
+        if (state.selected === 'A') state.curA = 0; else state.curB = 0;
+        logEvent("Empty " + state.selected);
         updateUI();
     }
 
     function transfer() {
+        const capA = parseInt(document.getElementById('capA').value);
+        const capB = parseInt(document.getElementById('capB').value);
         if (state.selected === 'A') {
-            let spaceInB = state.capB - state.curB;
-            let amountToPour = Math.min(state.curA, spaceInB);
-            state.curA -= amountToPour;
-            state.curB += amountToPour;
+            let move = Math.min(state.curA, capB - state.curB);
+            state.curA -= move; state.curB += move;
         } else {
-            let spaceInA = state.capA - state.curA;
-            let amountToPour = Math.min(state.curB, spaceInA);
-            state.curB -= amountToPour;
-            state.curA += amountToPour;
+            let move = Math.min(state.curB, capA - state.curA);
+            state.curB -= move; state.curA += move;
         }
+        logEvent("Transfer");
         updateUI();
     }
 
     function updateUI() {
-        document.getElementById('waterA').style.height = (state.curA / state.capA * 100) + '%';
-        document.getElementById('waterB').style.height = (state.curB / state.capB * 100) + '%';
-        document.getElementById('curA').innerText = state.curA;
-        document.getElementById('curB').innerText = state.curB;
-        document.getElementById('maxA').innerText = state.capA;
-        document.getElementById('maxB').innerText = state.capB;
-        document.getElementById('target-val').innerText = state.target;
+        const capA = parseInt(document.getElementById('capA').value);
+        const capB = parseInt(document.getElementById('capB').value);
+        const target = parseInt(document.getElementById('target').value);
 
-        if (state.curA === state.target || state.curB === state.target) {
-            document.getElementById('status-msg').innerText = "SUCCESS! Target reached.";
+        document.getElementById('waterA').style.height = (state.curA / capA * 100) + '%';
+        document.getElementById('waterB').style.height = (state.curB / capB * 100) + '%';
+        
+        if (state.curA === target || state.curB === target) {
+            document.getElementById('status').innerText = "PATCH DEPLETED (Solved!)";
+            logEvent("Solved");
         }
     }
 
-    initGame();
+    startNewPatch();
 </script>
 </body>
 </html>
