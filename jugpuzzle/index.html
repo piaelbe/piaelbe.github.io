@@ -8,23 +8,27 @@
         body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: var(--bg); display: flex; margin: 0; height: 100vh; overflow: hidden;}
         
         /* Sidebar Config */
-        #config-panel { width: 320px; background: white; padding: 20px; border-right: 1px solid #ddd; overflow-y: auto; display: flex; flex-direction: column; }
-        .config-section { margin-bottom: 20px; padding-bottom: 15px; border-bottom: 1px solid #eee; }
+        #config-panel { width: 320px; background: white; padding: 20px; border-right: 1px solid #ddd; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; }
+        .config-section { padding-bottom: 15px; border-bottom: 1px solid #eee; }
         label { display: block; font-size: 0.9em; font-weight: bold; margin-bottom: 5px; color: #444; }
         input[type="range"] { width: 100%; }
         .val-disp { float: right; color: var(--primary); }
 
         .radio-group { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 5px; }
-        .radio-group label { font-weight: normal; background: #eee; padding: 8px; border-radius: 4px; text-align: center; cursor: pointer; }
+        .radio-group label { font-weight: normal; background: #eee; padding: 8px; border-radius: 4px; text-align: center; cursor: pointer; font-size: 0.85em; }
         .radio-group input { display: none; }
         .radio-group input:checked + label { background: var(--primary); color: white; }
 
-        .difficulty-footnote { font-size: 0.75em; color: #666; line-height: 1.4; background: #f9f9f9; padding: 10px; border-radius: 5px; margin-top: auto; }
+        /* Instructions Section */
+        #instructions { font-size: 0.8em; color: #444; line-height: 1.5; background: #fdfdfd; padding: 15px; border: 1px solid #eee; border-radius: 8px; }
+        #instructions h4 { margin-top: 0; color: #333; border-bottom: 1px solid #ddd; padding-bottom: 5px; }
+        .instruction-tag { display: inline-block; padding: 2px 6px; border-radius: 4px; font-weight: bold; font-size: 0.8em; margin-bottom: 4px; }
+        .tag-win { background: #e8f5e9; color: #2e7d32; }
+        .tag-lose { background: #ffebee; color: #c62828; }
 
         /* Main Game Area */
         #experiment-area { flex-grow: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; position: relative; }
         
-        /* Travel Overlay */
         #travel-overlay { 
             position: absolute; top: 0; left: 0; width: 100%; height: 100%; 
             background: rgba(0,0,0,0.9); color: white; display: none; 
@@ -33,11 +37,10 @@
         .progress-container { width: 300px; height: 10px; background: #333; border-radius: 5px; margin-top: 20px; overflow: hidden; }
         #progress-bar { width: 0%; height: 100%; background: var(--primary); transition: width 0.1s linear; }
 
-        /* Central Score, Timer & Goal */
         .center-display { text-align: center; margin-bottom: 20px; }
-        .score-display { font-size: 1.8em; font-weight: bold; color: var(--gold); text-shadow: 1px 1px 2px rgba(0,0,0,0.2); margin-bottom: -10px; }
+        .score-display { font-size: 1.8em; font-weight: bold; color: var(--gold); margin-bottom: -10px; }
         .timer-prominent { font-size: 4em; font-weight: 800; font-family: monospace; color: #333; line-height: 1; }
-        .target-display { font-size: 2em; font-weight: bold; background: #fff; padding: 10px 40px; border-radius: 50px; border: 4px solid #333; box-shadow: 0 4px 10px rgba(0,0,0,0.1); margin-top: 10px; }
+        .target-display { font-size: 2em; font-weight: bold; background: #fff; padding: 10px 40px; border-radius: 50px; border: 4px solid #333; margin-top: 10px; }
 
         .jug-container { display: flex; gap: 60px; align-items: flex-end; height: 300px; margin: 10px 0; }
         .jug-wrapper { display: flex; flex-direction: column; align-items: center; gap: 10px; }
@@ -52,7 +55,7 @@
         .btn-leave { background: var(--danger); color: white; }
         .btn-next { background: var(--success); color: white; display: none; font-size: 1.2em; padding: 15px 40px; }
         
-        #log-output { width: 100%; height: 100px; margin-top: 10px; font-family: monospace; font-size: 10px; }
+        #log-output { width: 100%; height: 80px; font-family: monospace; font-size: 10px; }
     </style>
 </head>
 <body>
@@ -81,16 +84,23 @@
         </div>
     </div>
 
-    <button onclick="startSession()" style="width:100%; background:var(--success); color:white; padding: 15px; font-size: 1em; cursor:pointer;">START SESSION</button>
+    <button onclick="startSession()" style="width:100%; background:var(--success); color:white; padding: 15px; font-size: 1em; cursor:pointer; margin-bottom: 10px;">START SESSION</button>
     
     <textarea id="log-output" readonly placeholder="Move Log..."></textarea>
 
-    <div class="difficulty-footnote">
-        <strong>Difficulty Definitions:</strong><br>
-        • <strong>Easy:</strong> Solvable in 1-2 moves (+10 pts)<br>
-        • <strong>Medium:</strong> Requires logic cycles (+10 pts)<br>
-        • <strong>Hard:</strong> High complexity steps (+10 pts)<br>
-        • <strong>Impossible:</strong> Mathmatically unsolvable (-5 pts to skip)
+    <div id="instructions">
+        <h4>How to Play</h4>
+        <p>Your goal is to measure exactly the <strong>Target Amount</strong> in either Jug A or Jug B.</p>
+        <ul>
+            <li><strong>Select:</strong> Click a jug to select it.</li>
+            <li><strong>Fill:</strong> Fills the selected jug to the brim.</li>
+            <li><strong>Empty:</strong> Drains the selected jug completely.</li>
+            <li><strong>Pour:</strong> Pours from the selected jug into the other until the other is full or the source is empty.</li>
+        </ul>
+        <hr>
+        <div class="instruction-tag tag-win">+10 Points</div> Successfully reach the goal. <br>
+        <div class="instruction-tag tag-lose">-5 Points</div> Click "I GIVE UP" to skip.
+        <p><em>Note: Skipping or solving triggers "Travel Time" before the next puzzle appears.</em></p>
     </div>
 </div>
 
@@ -129,7 +139,7 @@
 
     <button id="next-patch-btn" class="btn-next" onclick="leavePatch(true)">NEXT PUZZLE (+10 pts)</button>
     
-    <p id="status" style="margin-top: 20px; font-weight: bold; color: #888;">Ready to start</p>
+    <p id="status" style="margin-top: 20px; font-weight: bold; color: #888;">Configure and start</p>
 </div>
 
 <script>
