@@ -129,7 +129,7 @@ function gameLoop() {
     // Sentry Social Capital
     if (onRock) {
         player.social = Math.min(100, player.social + 0.25);
-        document.getElementById('roleUI').innerText = "Sentry 💂";
+        document.getElementById('roleUI').innerText = "Sentry 👁";
     } else {
         player.social = Math.max(0, player.social - 0.04);
         document.getElementById('roleUI').innerText = "Forager 🐾";
@@ -178,7 +178,7 @@ function render(onRock) {
 
     // The Mob
     ctx.font = "30px Arial";
-    ctx.fillText("👶", 100, 420); ctx.fillText("🐾", 160, 400);
+    ctx.fillText("🐾", 100, 420); ctx.fillText("🐾", 160, 400);
 
     // DRAW MEERKAT IMAGE
     let drawW = player.w;
@@ -221,4 +221,5 @@ function downloadCSV() {
 }
 </script>
 </body>
+
 </html>
