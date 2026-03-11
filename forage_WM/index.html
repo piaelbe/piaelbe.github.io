@@ -1,0 +1,384 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Cognitive Control & Foraging Study</title>
+  <script src="https://unpkg.com/jspsych@7.3.3"></script>
+  <script src="https://unpkg.com/@jspsych/plugin-html-keyboard-response@1.1.2"></script>
+  <script src="https://unpkg.com/@jspsych/plugin-html-button-response@1.1.2"></script>
+  <script src="https://unpkg.com/@jspsych/plugin-survey-likert@1.1.2"></script>
+  <script src="https://unpkg.com/@jspsych/plugin-survey-text@1.1.3"></script>
+  <script src="https://unpkg.com/@jspsych-contrib/plugin-pipe"></script>
+  <link href="https://unpkg.com/jspsych@7.3.3/css/jspsych.css" rel="stylesheet" type="text/css" />
+  <style>
+    .foraging-grid { display: grid; grid-template-columns: repeat(20, 20px); gap: 2px; justify-content: center; background: #f0f0f0; padding: 10px; border: 1px solid #ccc; }
+    .stim { width: 18px; height: 18px; }
+    .target { background-color: #e74c3c; border-radius: 0%; cursor: pointer; }
+    .dist-color { background-color: #e74c3c; border-radius: 50%; }
+    .dist-shape { background-color: #3498db; border-radius: 0%; }
+    .ui-container { display: flex; justify-content: space-around; width: 600px; margin: 0 auto 10px; font-family: sans-serif; }
+    #timer-display { font-size: 20px; font-weight: bold; color: #c0392b; }
+    #score-display { font-size: 20px; font-weight: bold; color: #27ae60; }
+    .progress-container { width: 300px; height: 20px; background: #ddd; margin: 20px auto; border-radius: 10px; overflow: hidden; }
+    .progress-bar { width: 0%; height: 100%; background: #3498db; }
+    .nback-stim { font-size: 80px; font-weight: bold; }
+    .travel-btn { margin-top: 20px; background-color: #2c3e50; color: white; padding: 15px 30px; border: none; cursor: pointer; font-weight: bold; }
+  </style>
+</head>
+<body></body>
+<script>
+  const jsPsych = initJsPsych();
+  const subject_id = jsPsych.randomization.randomID(10);
+  const filename = `${subject_id}.csv`;
+  const timeline = [];
+
+  let total_score = 0;
+  let berries_in_patch = 30;
+  let foraging_start_time = null;
+  const FORAGING_DURATION = 120000;
+
+  // 1. FULL INFORMED CONSENT
+  const informed_consent = {
+    type: jsPsychHtmlButtonResponse,
+    stimulus: `
+      <div style="max-width: 800px; text-align: left; margin: 0 auto; line-height: 1.6;">
+        <h2 style="text-align: center;">Informed Consent</h2>
+        <p><strong>About the Study</strong><br>
+        This research investigates the relationship between behavioral foraging patterns (how we make decisions about rewards) and working memory capacity. You will perform a memory task followed by a decision-making "patch-leaving" task.</p>
+        <p><strong>Duration</strong><br>The study will take approximately 15–20 minutes to complete.</p>
+        <p><strong>Eligibility</strong><br>Participants must be at least 18 years of age and have a fluent command of English. We recommend completing this in a quiet environment.</p>
+        <p><strong>Data Privacy & Voluntary Participation</strong><br>Your responses and decisions will be recorded, stored, and reported <strong>anonymously</strong>. Participation is entirely voluntary. You may withdraw from the study at any time without providing a reason and without any negative consequences. Your data will be handled confidentially in accordance with applicable data protection regulations.</p>
+        <hr>
+        <p><strong>Statement of Consent</strong><br>By clicking the button below, you confirm that:</p>
+        <ul>
+          <li>I have read and understood the information above.</li>
+          <li>I am at least 18 years old.</li>
+          <li>I agree to the storage, publication, and scientific use of my anonymized data.</li>
+          <li>I have been informed about the nature and purpose of this study and I voluntarily consent to participate.</li>
+        </ul>
+      </div>
+    `,
+    choices: ['I Consent and Wish to Continue'],
+    margin_vertical: '40px'
+  };
+  timeline.push(informed_consent);
+
+  // 2. ASRS-6 + ATTENTION CHECK + DEMOGRAPHICS
+  const survey = {
+    type: jsPsychSurveyLikert,
+    questions: [
+      {prompt: "How often do you have trouble wrapping up final details?", labels: ["Never", "Rarely", "Sometimes", "Often", "Very Often"], required: true},
+      {prompt: "How often do you have difficulty getting things in order?", labels: ["Never", "Rarely", "Sometimes", "Often", "Very Often"], required: true},
+      {prompt: "Please select 'Often' for this specific question to show you are reading.", labels: ["Never", "Rarely", "Sometimes", "Often", "Very Often"], required: true},
+      {prompt: "How often do you have problems remembering appointments?", labels: ["Never", "Rarely", "Sometimes", "Often", "Very Often"], required: true},
+      {prompt: "How often do you avoid tasks requiring a lot of thought?", labels: ["Never", "Rarely", "Sometimes", "Often", "Very Often"], required: true},
+      {prompt: "How often do you fidget or squirm?", labels: ["Never", "Rarely", "Sometimes", "Often", "Very Often"], required: true},
+      {prompt: "How often do you feel 'driven by a motor'?", labels: ["Never", "Rarely", "Sometimes", "Often", "Very Often"], required: true}
+    ],
+    data: { phase: 'ASRS_and_check' }
+  };
+  timeline.push(survey);
+
+  const demographics_age = {
+    type: jsPsychSurveyText,
+    questions: [{prompt: "Please enter your age in years:", name: 'age', required: true}],
+    data: { phase: 'demographics_age' }
+  };
+  timeline.push(demographics_age);
+
+  const demographics_gender = {
+    type: jsPsychHtmlButtonResponse,
+    stimulus: "<p>Please select your gender:</p>",
+    choices: ['Male', 'Female', 'Other or prefer not to state'],
+    data: { phase: 'demographics_gender' }
+  };
+  timeline.push(demographics_gender);
+
+  // 3. N-BACK INSTRUCTIONS & TASK
+  const n_back_instr = {
+    type: jsPsychHtmlButtonResponse,
+    stimulus: `
+      <div style="max-width: 800px; text-align: left; margin: 0 auto;">
+        <h2 style="text-align: center;">Task 1: Memory Game</h2>
+        <p>You will see a sequence of letters presented one by one.</p>
+        <p>Your task is to press the <b>SPACEBAR</b> if the current letter is the <b>SAME</b> as the one you saw <b>2 steps ago</b>.</p>
+        <hr>
+        <p><strong>Example:</strong></p>
+        <p style="font-family: monospace; font-size: 20px; text-align: center;">
+          B &rarr; F &rarr; <b>B</b> (MATCH! Press Space)<br>
+          F &rarr; B &rarr; G (No Match)<br>
+          B &rarr; G &rarr; <b>B</b> (MATCH! Press Space)
+        </p>
+        <hr>
+        <p>Letters will appear quickly (0.5 seconds). Only press Space if it is a match. If it is not a match, do nothing.</p>
+      </div>
+    `,
+    choices: ['Begin Memory Task']
+  };
+  timeline.push(n_back_instr);
+
+// 1. Define Standard Consonants
+const letters = ['B', 'C', 'D', 'F', 'G', 'H', 'J', 'K', 'L', 'M', 'N', 'P', 'R', 'S', 'T'];
+
+// 2. Create a fixed sequence (e.g., 100 trials, 30 matches)
+let nback_stimuli = [];
+const total_trials = 50;
+const num_matches = 20;
+
+// Fill with random letters first
+for (let i = 0; i < total_trials; i++) {
+    nback_stimuli.push(jsPsych.randomization.sampleWithReplacement(letters, 1)[0]);
+}
+
+// Force exactly 30 matches at random indices (starting from index 2)
+let match_indices = jsPsych.randomization.sampleWithoutReplacement([...Array(total_trials - 2).keys()].map(x => x + 2), num_matches);
+match_indices.forEach(idx => {
+    nback_stimuli[idx] = nback_stimuli[idx - 2];
+});
+
+// --- ADD THIS LOOP TO SHOW THE N-BACK LETTERS ---
+nback_stimuli.forEach((letter, i) => {
+  timeline.push({
+    type: jsPsychHtmlKeyboardResponse,
+    stimulus: `<div class="nback-stim">${letter}</div>`,
+    choices: [' '], // Spacebar
+    trial_duration: 500, // Show letter for 0.5s
+    response_ends_trial: false,
+    post_trial_gap: 1000, // Wait 1s between letters (Standard ISI)
+    data: { 
+      task: 'nback', 
+      target: (i > 1 && letter === nback_stimuli[i - 2]) // Is it a 2-back match?
+    },
+    on_finish: function(data) {
+      // Calculate accuracy: hit (pressed on target) or correct rejection (did nothing on non-target)
+      data.correct = (data.response === ' ' && data.target) || (data.response === null && !data.target);
+    }
+  });
+});
+// --- END OF N-BACK LOOP ---
+
+// --- SERIAL RECALL CONFIG ---
+const digits = ['1', '2', '3', '4', '5', '6', '7', '8', '9'];
+const sequence_length = 7; 
+const num_recall_trials = 10; 
+
+const serial_recall_instr = {
+  type: jsPsychHtmlButtonResponse,
+  stimulus: `<h2>Task 2: Number Memory</h2>
+             <p>A sequence of numbers will appear one by one.</p>
+             <p>After they disappear, click the buttons to repeat the sequence <b>in the exact order</b>.</p>`,
+  choices: ['Begin Task']
+};
+timeline.push(serial_recall_instr);
+
+// THE LOOP
+for (let i = 0; i < num_recall_trials; i++) {
+  let trial_sequence = jsPsych.randomization.sampleWithoutReplacement(digits, sequence_length);
+  
+  // 1. Present digits
+  trial_sequence.forEach(digit => {
+    timeline.push({
+      type: jsPsychHtmlKeyboardResponse,
+      stimulus: `<div style="font-size: 60px;">${digit}</div>`,
+      choices: "NO_KEYS",
+      trial_duration: 1000, 
+      post_trial_gap: 200
+    });
+  });
+
+  // 2. Recall Phase (Elbe Style: 7 clicks + Next Button)
+  timeline.push({
+    type: jsPsychHtmlButtonResponse,
+    stimulus: `<p>Enter the ${sequence_length} numbers in the order they appeared:</p>`,
+    choices: ['Next Trial'], 
+    button_html: '<button id="next-btn" class="jspsych-btn" style="display:none; margin-top: 20px; margin-left: auto; margin-right: auto;">%choice%</button>',
+    prompt: () => {
+      let html = '<div style="display: grid; grid-template-columns: repeat(3, 70px); gap: 10px; justify-content: center;">';
+      digits.forEach(d => {
+        html += `<button class="recall-btn jspsych-btn" style="width:60px; height:60px; font-size:20px; cursor:pointer;">${d}</button>`;
+      });
+      html += '</div>';
+      return html;
+    },
+    data: { task: 'serial_recall', correct_sequence: trial_sequence },
+    on_load: function() {
+      let clicks = [];
+      const buttons = document.querySelectorAll('.recall-btn');
+      const nextBtn = document.getElementById('next-btn');
+
+      buttons.forEach(btn => {
+        btn.addEventListener('click', (e) => {
+          const val = e.target.innerText;
+          clicks.push(val);
+          e.target.style.visibility = 'hidden'; 
+          
+          if (clicks.length === sequence_length) {
+            nextBtn.style.display = 'block'; // Show "Next Trial" button
+            buttons.forEach(b => b.style.pointerEvents = 'none'); // Disable further clicks
+            jsPsych.getCurrentTrial().data.response_sequence = clicks;
+          }
+        });
+      });
+    },
+    on_finish: function(data) {
+      let response = data.response_sequence || [];
+      let correct = true;
+      for(let j=0; j < sequence_length; j++) {
+          if(response[j] !== data.correct_sequence[j]) {
+              correct = false;
+              break;
+          }
+      }
+      data.correct = correct;
+    }
+  });
+} 
+// --- END OF SERIAL RECALL ---
+
+  // 4. FORAGING
+  timeline.push({
+    type: jsPsychHtmlButtonResponse,
+    stimulus: `
+      <h2>Task 2: Visual Foraging</h2>
+      <p>Find the <b>RED SQUARES</b> in the grid.</p>
+      <p>Click <b>"Travel to New Bush"</b> to reset the patch (5s delay).</p>
+      <p>Goal: Collect as many as possible in <b>2 minutes</b>.</p>
+    `,
+    choices: ['Start Foraging']
+  });
+
+const foraging_trial = {
+    type: jsPsychHtmlButtonResponse,
+    stimulus: () => {
+      let elapsed = performance.now() - (foraging_start_time || performance.now());
+      let remaining = Math.max(0, Math.ceil((FORAGING_DURATION - elapsed) / 1000));
+      return `
+        <div class="ui-container">
+          <div id="timer-display">Time: ${remaining}s</div> 
+          <div id="score-display">Total Berries: <span id="score-value">${total_score}</span></div>
+        </div>
+        <p>Berries in current bush: ${berries_in_patch}</p>
+      `;
+    },
+    choices: ['Travel to New Bush (5s Delay)'],
+    button_html: '<button class="travel-btn">%choice%</button>',
+    prompt: () => {
+      let grid = '<div class="foraging-grid">';
+      let items = Array(400).fill('dist');
+      let target_indices = jsPsych.randomization.sampleWithoutReplacement([...Array(400).keys()], berries_in_patch);
+      target_indices.forEach(idx => items[idx] = 'target');
+      items.forEach(type => {
+        if(type === 'target') { grid += `<div class="stim target" onclick="this.style.visibility='hidden'; window.harvest()"></div>`; }
+        else { grid += `<div class="stim ${Math.random() > 0.5 ? 'dist-color' : 'dist-shape'}"></div>`; }
+      });
+      return grid + '</div>';
+    },
+    on_load: () => {
+      if(!foraging_start_time) foraging_start_time = performance.now();
+
+      // This updates the timer text every second
+      const timerInterval = setInterval(() => {
+        let elapsed = performance.now() - foraging_start_time;
+        let remaining = Math.max(0, Math.ceil((FORAGING_DURATION - elapsed) / 1000));
+        let timerElem = document.getElementById('timer-display');
+        if (timerElem) {
+          timerElem.innerText = `Time: ${remaining}s`;
+        }
+        // AUTO-FINISH: If time is up, end this trial immediately
+        if (remaining <= 0) {
+          clearInterval(timerInterval);
+          jsPsych.finishTrial(); 
+        }
+      }, 1000);
+
+      window.harvest = () => { 
+        berries_in_patch--; 
+        total_score++;
+        const scoreElem = document.getElementById('score-value');
+        if(scoreElem) scoreElem.innerText = total_score;
+      };
+    },
+    on_finish: (data) => {
+      data.exit_density = berries_in_patch;
+      data.total_score_at_exit = total_score;
+    }
+  };
+
+const travel_delay = {
+    type: jsPsychHtmlKeyboardResponse,
+    stimulus: `<h3>Traveling to a new bush...</h3><div class="progress-container"><div id="travel-bar" class="progress-bar"></div></div>`,
+    choices: "NO_KEYS",
+    // This function checks if time is up. If so, it sets the delay to 0ms.
+    trial_duration: () => {
+      let elapsed = performance.now() - foraging_start_time;
+      return (FORAGING_DURATION - elapsed) <= 0 ? 0 : 5000;
+    },
+    on_load: () => {
+      let elapsed = performance.now() - foraging_start_time;
+      if ((FORAGING_DURATION - elapsed) > 0) {
+        let start = performance.now();
+        let interval = setInterval(() => {
+          let percent = ((performance.now() - start) / 5000) * 100;
+          let bar = document.getElementById('travel-bar');
+          if(bar) bar.style.width = percent + '%';
+          if(percent >= 100) clearInterval(interval);
+        }, 50);
+      }
+    }
+  };
+
+  timeline.push({
+    timeline: [foraging_trial, travel_delay],
+    loop_function: () => {
+      return (performance.now() - foraging_start_time) < FORAGING_DURATION;
+    },
+    on_timeline_start: () => { berries_in_patch = 30; }
+  });
+
+  // DATA SAVING
+  function downloadCSV() {
+    const csv = jsPsych.data.get().csv();
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement("a");
+    if (link.download !== undefined) {
+      const url = URL.createObjectURL(blob);
+      link.setAttribute("href", url);
+      link.setAttribute("download", `study_data_${subject_id}.csv`);
+      link.style.visibility = 'hidden';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    }
+  }
+
+  timeline.push({
+    type: jsPsychPipe,
+    action: "save",
+    experiment_id: "k2ZXUFrsz9vc",
+    filename: filename,
+    data_string: () => jsPsych.data.get().csv()
+  });
+
+  timeline.push({
+    type: jsPsychHtmlButtonResponse,
+    stimulus: () => `
+      <div style="max-width: 600px;">
+        <h2>Experiment Complete!</h2>
+        <p>You collected a total of <b>${total_score}</b> berries.</p>
+        <hr>
+        <p style="background: #e8f4fd; padding: 15px; border-radius: 5px;">
+          <strong>Data Verification:</strong> Click the button below to download your CSV.
+        </p>
+      </div>
+    `,
+    choices: ['Download CSV & Finish'],
+    on_finish: function() {
+      downloadCSV();
+      setTimeout(() => {
+        window.location.href = "https://app.prolific.com/submissions/complete?cc=C1234567";
+      }, 2000);
+    }
+  });
+
+  jsPsych.run(timeline);
+</script>
+</html>
