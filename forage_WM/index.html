@@ -275,13 +275,21 @@
     on_timeline_start: () => { berries_in_patch = 30; }
   });
 
-  // --- FINAL PHASE ---
+// --- FINAL PHASE ---
+  
+  // 1. Time is Up Screen
+  // Using 'jsPsychHtmlButtonResponse' with no trial_duration makes it wait forever.
   timeline.push({
-    type: jsPsychHtmlKeyboardResponse,
-    stimulus: '<h1 style="color: #c0392b;">Time is up!</h1><p>The foraging task is now over.</p><p>Press any key to continue to the final questions.</p>',
-    trial_duration: 4000
+    type: jsPsychHtmlButtonResponse,
+    stimulus: `
+      <h1 style="color: #c0392b;">Time is up!</h1>
+      <p>The foraging task is now over.</p>
+    `,
+    choices: ['Continue to final questions']
+    // No trial_duration here = wait indefinitely
   });
 
+  // 2. Compliance Question
   timeline.push({
     type: jsPsychHtmlButtonResponse,
     stimulus: "<p>Did you understand and follow the instructions in this experiment to the best of your abilities?</p>",
@@ -289,6 +297,7 @@
     data: { phase: 'subjective_compliance' }
   });
 
+  // 3. Debrief & Redirect
   timeline.push({
     type: jsPsychHtmlButtonResponse,
     stimulus: () => `
@@ -302,12 +311,23 @@
       </div>`,
     choices: ['Finish and Return to Prolific'],
     on_finish: function() {
-      jsPsychPipe.save({ experiment_id: "k2ZXUFrsz9vc", filename: filename, data_string: jsPsych.data.get().csv() });
-      setTimeout(() => { window.location.href = "https://app.prolific.com/submissions/complete?cc=C1234567"; }, 8000);
+      // Save data to DataPipe
+      jsPsychPipe.save({ 
+        experiment_id: "k2ZXUFrsz9vc", 
+        filename: filename, 
+        data_string: jsPsych.data.get().csv() 
+      });
+
+      // The redirect only happens after the button click. 
+      // We use a tiny 500ms delay just to give the DataPipe save a head start.
+      setTimeout(() => { 
+        window.location.href = "https://app.prolific.com/submissions/complete?cc=C1234567"; 
+      }, 500); 
     }
   });
 
   jsPsych.run(timeline);
 </script>
 </html>
+
 
