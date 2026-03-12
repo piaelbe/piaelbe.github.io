@@ -54,25 +54,31 @@
     stimulus: `
       <div style="max-width: 600px;">
         <h3>Screen Check</h3>
-        <p>This experiment requires a large window to display the tasks correctly.</p>
+        <p>This experiment requires a larger screen to display the tasks correctly.</p>
         <p>Please <strong>maximize your browser window</strong> now.</p>
       </div>`,
     choices: ['Screen is Maximized']
   });
 
-  // 1. INFORMED CONSENT
+  // 1. FULL INFORMED CONSENT (RESTORED)
   const informed_consent = {
     type: jsPsychHtmlButtonResponse,
     stimulus: `
       <div style="max-width: 800px; text-align: left; margin: 0 auto; line-height: 1.6;">
         <h2 style="text-align: center;">Informed Consent</h2>
         <p><strong>About the Study</strong><br>
-        This research investigates behavioral foraging patterns and working memory capacity. 
-        You will perform two memory tasks followed by a decision-making "patch-leaving" task.</p>
-        <p><strong>Duration</strong>: ~15-20 minutes.</p>
-        <p><strong>Confidentiality</strong>: Your data is collected anonymously. Participation is voluntary.</p>
+        This research investigates the relationship between behavioral foraging patterns (how we make decisions about rewards) and working memory capacity. You will perform a memory task followed by a decision-making "patch-leaving" task.</p>
+        <p><strong>Duration</strong><br>The study will take approximately 15 minutes to complete.</p>
+        <p><strong>Eligibility</strong><br>Participants must be at least 18 years of age, have normal or corrected-to-normal vision, and have a fluent command of English. We recommend completing this in a quiet environment.</p>
+        <p><strong>Data Privacy & Voluntary Participation</strong><br>Your responses and decisions will be recorded, stored, and reported <strong>anonymously</strong>. Participation is entirely voluntary. You may withdraw from the study at any time without providing a reason and without any negative consequences. Your data will be handled confidentially in accordance with applicable data protection regulations.</p>
         <hr>
-        <p>By clicking below, you confirm you are 18+ and consent to participate.</p>
+        <p><strong>Statement of Consent</strong><br>By clicking the button below, you confirm that:</p>
+        <ul>
+          <li>I have read and understood the information above.</li>
+          <li>I am at least 18 years old.</li>
+          <li>I agree to the storage, publication, and scientific use of my anonymized data.</li>
+          <li>I have been informed about the nature and purpose of this study and I voluntarily consent to participate.</li>
+        </ul>
       </div>
     `,
     choices: ['I Consent and Wish to Continue'],
@@ -80,47 +86,63 @@
   };
   timeline.push(informed_consent);
 
-  // 2. ASRS-6 + DEMOGRAPHICS
+  // 2. ASRS-6 + ATTENTION CHECK + DEMOGRAPHICS
   const survey = {
     type: jsPsychSurveyLikert,
     questions: [
       {prompt: "How often do you have trouble wrapping up final details?", labels: ["Never", "Rarely", "Sometimes", "Often", "Very Often"], required: true},
       {prompt: "How often do you have difficulty getting things in order?", labels: ["Never", "Rarely", "Sometimes", "Often", "Very Often"], required: true},
-      {prompt: "Please select 'Often' for this question (Attention Check).", labels: ["Never", "Rarely", "Sometimes", "Often", "Very Often"], required: true},
+      {prompt: "Please select 'Often' for this specific question to show you are reading.", labels: ["Never", "Rarely", "Sometimes", "Often", "Very Often"], required: true},
       {prompt: "How often do you have problems remembering appointments?", labels: ["Never", "Rarely", "Sometimes", "Often", "Very Often"], required: true},
       {prompt: "How often do you avoid tasks requiring a lot of thought?", labels: ["Never", "Rarely", "Sometimes", "Often", "Very Often"], required: true},
       {prompt: "How often do you fidget or squirm?", labels: ["Never", "Rarely", "Sometimes", "Often", "Very Often"], required: true},
       {prompt: "How often do you feel 'driven by a motor'?", labels: ["Never", "Rarely", "Sometimes", "Often", "Very Often"], required: true}
     ],
-    data: { phase: 'ASRS' }
+    data: { phase: 'ASRS_and_check' }
   };
   timeline.push(survey);
 
   timeline.push({
     type: jsPsychSurveyText,
-    questions: [{prompt: "Age:", name: 'age', required: true}],
-    data: { phase: 'age' }
+    questions: [{prompt: "Please enter your age in years:", name: 'age', required: true}],
+    data: { phase: 'demographics_age' }
   });
 
   timeline.push({
     type: jsPsychHtmlButtonResponse,
-    stimulus: "<p>Gender:</p>",
-    choices: ['Male', 'Female', 'Other/Prefer not to state'],
-    data: { phase: 'gender' }
+    stimulus: "<p>Please select your gender:</p>",
+    choices: ['Male', 'Female', 'Other or prefer not to state'],
+    data: { phase: 'demographics_gender' }
   });
 
-  // 3. N-BACK (Task 1)
+  // 3. N-BACK INSTRUCTIONS (RESTORED)
+  const n_back_instr = {
+    type: jsPsychHtmlButtonResponse,
+    stimulus: `
+      <div style="max-width: 800px; text-align: left; margin: 0 auto;">
+        <h2 style="text-align: center;">Task 1: Memory Game</h2>
+        <p>You will see a sequence of letters presented one by one.</p>
+        <p>Your task is to press the <b>SPACEBAR</b> if the current letter is the <b>SAME</b> as the one you saw <b>2 steps ago</b>.</p>
+        <hr>
+        <p><strong>Example:</strong></p>
+        <p style="font-family: monospace; font-size: 20px; text-align: center;">
+          B &rarr; F &rarr; <b>B</b> (MATCH! Press Space)<br>
+          F &rarr; B &rarr; G (No Match)<br>
+          B &rarr; G &rarr; <b>B</b> (MATCH! Press Space)
+        </p>
+        <hr>
+        <p>Letters will appear quickly (0.5 seconds). Only press Space if it is a match. If it is not a match, do nothing.</p>
+      </div>
+    `,
+    choices: ['Begin Memory Task']
+  };
+  timeline.push(n_back_instr);
+
   const letters = ['B', 'C', 'D', 'F', 'G', 'H', 'J', 'K', 'L', 'M', 'N', 'P', 'R', 'S', 'T'];
   let nback_stimuli = [];
   for (let i = 0; i < 50; i++) nback_stimuli.push(jsPsych.randomization.sampleWithReplacement(letters, 1)[0]);
   let match_indices = jsPsych.randomization.sampleWithoutReplacement([...Array(48).keys()].map(x => x + 2), 20);
   match_indices.forEach(idx => nback_stimuli[idx] = nback_stimuli[idx - 2]);
-
-  timeline.push({
-    type: jsPsychHtmlButtonResponse,
-    stimulus: "<h2>Task 1: Memory Game</h2><p>Press <b>SPACEBAR</b> if the letter is the SAME as 2 steps ago.</p>",
-    choices: ['Start']
-  });
 
   nback_stimuli.forEach((letter, i) => {
     timeline.push({
@@ -128,56 +150,87 @@
       stimulus: `<div class="nback-stim">${letter}</div>`,
       choices: [' '],
       trial_duration: 500,
+      response_ends_trial: false,
       post_trial_gap: 1000,
       data: { task: 'nback', target: (i > 1 && letter === nback_stimuli[i - 2]) },
-      on_finish: function(data) { data.correct = (data.response === ' ' && data.target) || (data.response === null && !data.target); }
+      on_finish: function(data) {
+        data.correct = (data.response === ' ' && data.target) || (data.response === null && !data.target);
+      }
     });
   });
 
-  // SERIAL RECALL (Task 2)
+  // --- SERIAL RECALL ---
   const digits = ['1', '2', '3', '4', '5', '6', '7', '8', '9'];
+  timeline.push({
+    type: jsPsychHtmlButtonResponse,
+    stimulus: `<h2>Task 2: Number Memory</h2>
+               <p>A sequence of numbers will appear one by one.</p>
+               <p>After they disappear, click the buttons to repeat the sequence <b>in the exact order</b>.</p>`,
+    choices: ['Begin Task']
+  });
+
   for (let i = 0; i < 10; i++) {
-    let seq = jsPsych.randomization.sampleWithoutReplacement(digits, 7);
-    seq.forEach(d => {
-      timeline.push({ type: jsPsychHtmlKeyboardResponse, stimulus: `<div style="font-size: 60px;">${d}</div>`, choices: "NO_KEYS", trial_duration: 1000, post_trial_gap: 200 });
+    let trial_sequence = jsPsych.randomization.sampleWithoutReplacement(digits, 7);
+    trial_sequence.forEach(digit => {
+      timeline.push({
+        type: jsPsychHtmlKeyboardResponse,
+        stimulus: `<div style="font-size: 60px;">${digit}</div>`,
+        choices: "NO_KEYS",
+        trial_duration: 1000, 
+        post_trial_gap: 200
+      });
     });
+
     timeline.push({
       type: jsPsychHtmlButtonResponse,
-      stimulus: "<p>Recall the 7 numbers:</p>",
-      choices: ['Next Trial'],
-      button_html: '<button id="next-btn" class="jspsych-btn" style="display:none; margin-top:20px;">%choice%</button>',
+      stimulus: `<p>Enter the 7 numbers in the order they appeared:</p>`,
+      choices: ['Next Trial'], 
+      button_html: '<button id="next-btn" class="jspsych-btn" style="display:none; margin-top: 20px;">%choice%</button>',
       prompt: () => {
         let html = '<div style="display: grid; grid-template-columns: repeat(3, 70px); gap: 10px; justify-content: center;">';
-        digits.forEach(d => html += `<button class="recall-btn jspsych-btn" style="width:60px; height:60px; font-size:20px;">${d}</button>`);
+        digits.forEach(d => { html += `<button class="recall-btn jspsych-btn" style="width:60px; height:60px; font-size:20px; cursor:pointer;">${d}</button>`; });
         return html + '</div>';
       },
       on_load: function() {
         let clicks = [];
         const nextBtn = document.getElementById('next-btn');
-        document.querySelectorAll('.recall-btn').forEach(btn => {
+        const buttons = document.querySelectorAll('.recall-btn');
+        buttons.forEach(btn => {
           btn.addEventListener('click', (e) => {
             clicks.push(e.target.innerText);
-            e.target.style.visibility = 'hidden';
+            e.target.style.visibility = 'hidden'; 
             if (clicks.length === 7) {
               nextBtn.style.display = 'block';
-              document.querySelectorAll('.recall-btn').forEach(b => b.style.pointerEvents = 'none');
+              buttons.forEach(b => b.style.pointerEvents = 'none');
               jsPsych.getCurrentTrial().data.response_sequence = clicks;
             }
           });
         });
       },
-      data: { task: 'serial_recall', correct_sequence: seq }
+      data: { task: 'serial_recall', correct_sequence: trial_sequence }
     });
   }
 
-  // FORAGING (Task 3)
+  // --- FORAGING ---
+  timeline.push({
+    type: jsPsychHtmlButtonResponse,
+    stimulus: `
+      <h2>Task 3: Visual Foraging</h2>
+      <p>Find the <b>RED SQUARES</b> in the grid.</p>
+      <p>Click <b>"Travel to New Bush"</b> to reset the patch (5s delay).</p>
+      <p>Goal: Collect as many as possible in <b>2 minutes</b>.</p>
+    `,
+    choices: ['Start Foraging']
+  });
+
   const foraging_trial = {
     type: jsPsychHtmlButtonResponse,
     stimulus: () => {
-      let rem = Math.max(0, Math.ceil((FORAGING_DURATION - (performance.now() - foraging_start_time)) / 1000));
-      return `<div class="ui-container"><div>Time: ${rem}s</div><div>Score: <span id="score-value">${total_score}</span></div></div>`;
+      let elapsed = performance.now() - (foraging_start_time || performance.now());
+      let remaining = Math.max(0, Math.ceil((FORAGING_DURATION - elapsed) / 1000));
+      return `<div class="ui-container"><div id="timer-display">Time: ${remaining}s</div><div id="score-display">Total Berries: <span id="score-value">${total_score}</span></div></div><p>Berries in current bush: ${berries_in_patch}</p>`;
     },
-    choices: ['Travel to New Bush (5s)'],
+    choices: ['Travel to New Bush (5s Delay)'],
     button_html: '<button class="travel-btn">%choice%</button>',
     prompt: () => {
       let grid = '<div class="foraging-grid">';
@@ -191,24 +244,27 @@
     },
     on_load: () => {
       if(!foraging_start_time) foraging_start_time = performance.now();
-      const timer = setInterval(() => {
-        let rem = Math.max(0, Math.ceil((FORAGING_DURATION - (performance.now() - foraging_start_time)) / 1000));
-        if (rem <= 0) { clearInterval(timer); jsPsych.finishTrial(); }
+      const timerInterval = setInterval(() => {
+        let elapsed = performance.now() - foraging_start_time;
+        let remaining = Math.max(0, Math.ceil((FORAGING_DURATION - elapsed) / 1000));
+        if (document.getElementById('timer-display')) document.getElementById('timer-display').innerText = `Time: ${remaining}s`;
+        if (remaining <= 0) { clearInterval(timerInterval); jsPsych.finishTrial(); }
       }, 1000);
-      window.harvest = () => { berries_in_patch--; total_score++; document.getElementById('score-value').innerText = total_score; };
+      window.harvest = () => { berries_in_patch--; total_score++; if(document.getElementById('score-value')) document.getElementById('score-value').innerText = total_score; };
     }
   };
 
   const travel_delay = {
     type: jsPsychHtmlKeyboardResponse,
-    stimulus: `<h3>Traveling...</h3><div class="progress-container"><div id="travel-bar" class="progress-bar"></div></div>`,
+    stimulus: `<h3>Traveling to a new bush...</h3><div class="progress-container"><div id="travel-bar" class="progress-bar"></div></div>`,
     choices: "NO_KEYS",
     trial_duration: 5000,
     on_load: () => {
       let start = performance.now();
-      setInterval(() => {
-        let pct = ((performance.now() - start) / 5000) * 100;
-        if(document.getElementById('travel-bar')) document.getElementById('travel-bar').style.width = pct + '%';
+      let interval = setInterval(() => {
+        let percent = ((performance.now() - start) / 5000) * 100;
+        if(document.getElementById('travel-bar')) document.getElementById('travel-bar').style.width = percent + '%';
+        if(percent >= 100) clearInterval(interval);
       }, 50);
     }
   };
@@ -222,25 +278,27 @@
   // --- FINAL PHASE ---
   timeline.push({
     type: jsPsychHtmlKeyboardResponse,
-    stimulus: '<h1>Time is up!</h1><p>Press any key for the final debrief.</p>',
-    trial_duration: 3000
+    stimulus: '<h1 style="color: #c0392b;">Time is up!</h1><p>The foraging task is now over.</p><p>Press any key to continue to the final questions.</p>',
+    trial_duration: 4000
   });
 
   timeline.push({
     type: jsPsychHtmlButtonResponse,
-    stimulus: "<p>Did you follow the instructions to the best of your abilities?</p>",
-    choices: ['Yes', 'No'],
-    data: { phase: 'compliance' }
+    stimulus: "<p>Did you understand and follow the instructions in this experiment to the best of your abilities?</p>",
+    choices: ['Yes, I followed the instructions', 'No, I had some trouble'],
+    data: { phase: 'subjective_compliance' }
   });
 
   timeline.push({
     type: jsPsychHtmlButtonResponse,
     stimulus: () => `
       <div style="max-width: 800px; text-align: left; margin: 0 auto; line-height: 1.6;">
-        <h2>Debriefing</h2>
-        <p>This study explores how cognitive control (memory) relates to foraging (decision-making), based on <strong>Elbe et al. (2025)</strong>.</p>
-        <p>Contact: <strong style="color: #2980b9;">[ENTER YOUR EMAIL HERE]</strong></p>
-        <hr><p>Click below to be redirected to Prolific.</p>
+        <h2 style="text-align: center;">Study Debriefing</h2>
+        <p>Thank you for participating! In this study, you completed three distinct tasks: a letter-matching memory task (N-back), a number sequence recall task, and a visual search task (foraging).</p>
+        <p><strong>The Purpose:</strong> We are investigating the relationship between "Cognitive Control" and "Foraging Behavior." Specifically, we want to see if performance on memory tasks predicts how people decide to switch between patches. This research is informed by <strong>Elbe et al. (2025)</strong>.</p>
+        <p><strong>Contact Information:</strong> If you have questions, please contact the lead researcher at:<br>
+        <strong style="color: #2980b9;">pia.elbe@uni-konstanz.de</strong></p>
+        <hr><p>Clicking the button below will save your data and redirect you to Prolific.</p>
       </div>`,
     choices: ['Finish and Return to Prolific'],
     on_finish: function() {
