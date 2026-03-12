@@ -303,10 +303,11 @@
     choices: ['Finish and Return to Prolific'],
     on_finish: function() {
       jsPsychPipe.save({ experiment_id: "k2ZXUFrsz9vc", filename: filename, data_string: jsPsych.data.get().csv() });
-      setTimeout(() => { window.location.href = "https://app.prolific.com/submissions/complete?cc=C1234567"; }, 800);
+      setTimeout(() => { window.location.href = "https://app.prolific.com/submissions/complete?cc=C1234567"; }, 8000);
     }
   });
 
   jsPsych.run(timeline);
 </script>
 </html>
+
