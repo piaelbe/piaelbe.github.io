@@ -60,7 +60,7 @@
     choices: ['Screen is Maximized']
   });
 
-  // 1. FULL INFORMED CONSENT (RESTORED)
+  // 1. FULL INFORMED CONSEN
   const informed_consent = {
     type: jsPsychHtmlButtonResponse,
     stimulus: `
@@ -70,7 +70,7 @@
         This research investigates the relationship between behavioral foraging patterns (how we make decisions about rewards) and working memory capacity. You will perform a memory task followed by a decision-making "patch-leaving" task.</p>
         <p><strong>Duration</strong><br>The study will take approximately 15 minutes to complete.</p>
         <p><strong>Eligibility</strong><br>Participants must be at least 18 years of age, have normal or corrected-to-normal vision, and have a fluent command of English. We recommend completing this in a quiet environment.</p>
-        <p><strong>Data Privacy & Voluntary Participation</strong><br>Your responses and decisions will be recorded, stored, and reported <strong>anonymously</strong>. Participation is entirely voluntary. You may withdraw from the study at any time without providing a reason and without any negative consequences. Your data will be handled confidentially in accordance with applicable data protection regulations.</p>
+        <p><strong>Data Privacy & Voluntary Participation</strong><br>Your responses and decisions will be recorded, stored, and reported <strong>anonymously</strong> by the Department of Psychology, University of Konstanz. Participation is entirely voluntary. You may withdraw from the study at any time without providing a reason and without any negative consequences. Your data will be handled confidentially in accordance with applicable data protection regulations.</p>
         <hr>
         <p><strong>Statement of Consent</strong><br>By clicking the button below, you confirm that:</p>
         <ul>
@@ -330,37 +330,56 @@ timeline.push({
     data: { phase: 'subjective_compliance' }
   });
 
-  // 3. Debrief & Redirect
-  timeline.push({
-    type: jsPsychHtmlButtonResponse,
-    stimulus: () => `
-      <div style="max-width: 800px; text-align: left; margin: 0 auto; line-height: 1.6;">
-        <h2 style="text-align: center;">Study Debriefing</h2>
-        <p>Thank you for participating! In this study, you completed three distinct tasks: a letter-matching memory task (N-back), a number sequence recall task, and a visual search task (foraging).</p>
-        <p><strong>The Purpose:</strong> We are investigating the relationship between "Cognitive Control" and "Foraging Behavior." Specifically, we want to see if performance on memory tasks predicts how people decide to switch between patches. </p>
-        <p><strong>Contact Information:</strong> If you have questions, please contact the lead researcher at:<br>
-        <strong style="color: #2980b9;">pia.elbe@uni-konstanz.de</strong></p>
-        <hr><p>Clicking the button below will save your data and redirect you to Prolific.</p>
-      </div>`,
-    choices: ['Finish and Return to Prolific'],
-    on_finish: function() {
-      // Save data to DataPipe
-      jsPsychPipe.save({ 
-        experiment_id: "k2ZXUFrsz9vc", 
-        filename: filename, 
-        data_string: jsPsych.data.get().csv() 
-      });
+// --- FINAL PHASE: DEBRIEF & SECURE SAVE ---
 
-      // 500 ms delay to give the DataPipe save a head start
-      setTimeout(() => { 
-        window.location.href = "https://app.prolific.com/submissions/complete?cc=C1234567"; 
-      }, 1000); 
-    }
-  });
+// A. Show the Debriefing Information first
+timeline.push({
+  type: jsPsychHtmlButtonResponse,
+  stimulus: `
+    <div style="max-width: 800px; text-align: left; margin: 0 auto; line-height: 1.6;">
+      <h2 style="text-align: center;">Study Debriefing</h2>
+      <p>Thank you for participating! In this study, you completed three distinct tasks: a letter-matching memory task (N-back), a number sequence recall task, and a visual search task (foraging).</p>
+      <p><strong>The Purpose:</strong> We are investigating the relationship between "Cognitive Control" and "Foraging Behavior." Specifically, we want to see if performance on memory tasks predicts how people decide to switch between patches.</p>
+      <p><strong>Contact Information:</strong> If you have questions, please contact the lead researcher at:<br>
+      <strong style="color: #2980b9;">pia.elbe@uni-konstanz.de</strong></p>
+      <hr>
+      <p>Clicking the button below will securely save your data and automatically redirect you back to Prolific to complete your submission.</p>
+    </div>`,
+  choices: ['Finish and Save Data']
+});
+
+// B. Securely Save Data and Redirect to Prolific
+timeline.push({
+  type: jsPsychPipe,
+  action: "save",
+  experiment_id: "k2ZXUFrsz9vc",
+  filename: filename,
+  data_string: () => jsPsych.data.get().csv(),
+  stimulus: `
+    <div style="max-width: 600px; margin: auto; text-align: center; font-family: sans-serif;">
+      <h2>Saving Data...</h2>
+      <p>Please wait a moment while your responses are uploaded to our secure servers.</p>
+      <div style="margin: 20px auto; border: 4px solid #f3f3f3; border-top: 4px solid #3498db; border-radius: 50%; width: 50px; height: 50px; animation: spin 1s linear infinite;"></div>
+      <p style="color: #666; font-size: 0.9em;">If you are not redirected to Prolific within 10 seconds, 
+      please <a href="https://app.prolific.com/submissions/complete?cc=C53HHBBI" style="color: #3498db;">click here</a> 
+      or use completion code: <strong>C53HHBBI</strong></p>
+    </div>
+    <style>
+      @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+    </style>`,
+  on_finish: () => {
+    // Redirect to Prolific automatically
+    window.location.href = "https://app.prolific.com/submissions/complete?cc=C53HHBBI";
+  }
+});
+
+// Finally, run the script
+jsPsych.run(timeline);
 
   jsPsych.run(timeline);
 </script>
 </html>
+
 
 
 
