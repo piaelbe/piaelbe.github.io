@@ -212,115 +212,101 @@
   }
 
 // --- 4. FORAGING ---
-  let timerInterval; 
+let timerInterval; 
 
-  const foraging_trial = {
-    type: jsPsychHtmlButtonResponse,
-    stimulus: () => {
-      let elapsed = performance.now() - (foraging_start_time || performance.now());
-      let remaining = Math.max(0, Math.ceil((FORAGING_DURATION - elapsed) / 1000));
-      return `
-        <div class="ui-container">
-          <div id="timer-display">Time: ${remaining}s</div>
-          <div id="score-display">Total Berries: <span id="score-value">${total_score}</span></div>
-        </div>
-        <p>Berries in current bush: ${berries_in_patch}</p>
-      `;
-    },
-    choices: ['Travel to New Bush (5s Delay)'],
-    button_html: '<button class="travel-btn">%choice%</button>',
-    prompt: () => {
-      let grid = '<div class="foraging-grid">';
-      let items = Array(400).fill('dist');
-      jsPsych.randomization.sampleWithoutReplacement([...Array(400).keys()], berries_in_patch).forEach(idx => items[idx] = 'target');
-      items.forEach(type => {
-        if(type === 'target') grid += `<div class="stim target" onclick="this.style.visibility='hidden'; window.harvest()"></div>`;
-        else grid += `<div class="stim ${Math.random() > 0.5 ? 'dist-color' : 'dist-shape'}"></div>`;
-      });
-      return grid + '</div>';
-    },
-    on_load: () => {
-      if(!foraging_start_time) foraging_start_time = performance.now();
-      
-      // Clear any existing interval just in case
-      clearInterval(timerInterval);
+const foraging_trial = {
+  type: jsPsychHtmlButtonResponse,
+  stimulus: () => {
+    // Only calculate time if we've actually started foraging
+    let elapsed = foraging_start_time ? (performance.now() - foraging_start_time) : 0;
+    let remaining = Math.max(0, Math.ceil((FORAGING_DURATION - elapsed) / 1000));
+    return `
+      <div class="ui-container">
+        <div id="timer-display">Time: ${remaining}s</div>
+        <div id="score-display">Total Berries: <span id="score-value">${total_score}</span></div>
+      </div>
+      <p>Berries in current bush: ${berries_in_patch}</p>
+    `;
+  },
+  choices: ['Travel to New Bush (5s Delay)'],
+  button_html: '<button class="travel-btn">%choice%</button>',
+  prompt: () => {
+    let grid = '<div class="foraging-grid">';
+    let items = Array(400).fill('dist');
+    // FIX: Ensure berries_in_patch never goes below 0 to prevent crashes
+    let count = Math.max(0, berries_in_patch);
+    jsPsych.randomization.sampleWithoutReplacement([...Array(400).keys()], count).forEach(idx => items[idx] = 'target');
+    items.forEach(type => {
+      if(type === 'target') grid += `<div class="stim target" onclick="this.style.visibility='hidden'; window.harvest()"></div>`;
+      else grid += `<div class="stim ${Math.random() > 0.5 ? 'dist-color' : 'dist-shape'}"></div>`;
+    });
+    return grid + '</div>';
+  },
+  on_load: () => {
+    // START TIMER if not started
+    if (!foraging_start_time) foraging_start_time = performance.now();
 
-      timerInterval = setInterval(() => {
-        let elapsed = performance.now() - foraging_start_time;
-        let remaining = Math.max(0, Math.ceil((FORAGING_DURATION - elapsed) / 1000));
-        
-        let timerDiv = document.getElementById('timer-display');
-        if (timerDiv) timerDiv.innerText = `Time: ${remaining}s`;
-        
-        if (remaining <= 0) {
-          clearInterval(timerInterval);
-          jsPsych.finishTrial(); // End the foraging trial because time is up
-        }
-      }, 1000);
-
-      window.harvest = () => { 
-        berries_in_patch--; 
-        total_score++; 
-        let scoreVal = document.getElementById('score-value');
-        if(scoreVal) scoreVal.innerText = total_score; 
-      };
-    },
-    on_finish: () => {
-      clearInterval(timerInterval); // CRITICAL: Stop the timer when the user clicks 'Travel'
-    }
-  };
-
-  const travel_delay = {
-    type: jsPsychHtmlKeyboardResponse,
-    stimulus: `<h3>Traveling to a new bush...</h3><div class="progress-container"><div id="travel-bar" class="progress-bar"></div></div>`,
-    choices: "NO_KEYS",
-    // This ensures that if there are only 2 seconds left, the travel delay only lasts 2 seconds
-    trial_duration: () => {
+    timerInterval = setInterval(() => {
       let elapsed = performance.now() - foraging_start_time;
-      let remaining = FORAGING_DURATION - elapsed;
-      return Math.min(5000, Math.max(0, remaining)); 
-    },
-    on_load: () => {
-      let start = performance.now();
-      let travelInterval = setInterval(() => {
-        let trial_dur = jsPsych.getCurrentTrial().trial_duration;
-        let pct = ((performance.now() - start) / trial_dur) * 100;
-        let bar = document.getElementById('travel-bar');
-        if(bar) bar.style.width = pct + '%';
-        if(pct >= 100) clearInterval(travelInterval);
-      }, 50);
-    }
-  };
+      let remaining = Math.max(0, Math.ceil((FORAGING_DURATION - elapsed) / 1000));
+      let timerDiv = document.getElementById('timer-display');
+      if (timerDiv) timerDiv.innerText = `Time: ${remaining}s`;
+      
+      if (remaining <= 0) {
+        clearInterval(timerInterval);
+        jsPsych.finishTrial(); 
+      }
+    }, 1000);
+
+    window.harvest = () => { 
+      berries_in_patch--; 
+      total_score++; 
+      let scoreVal = document.getElementById('score-value');
+      if(scoreVal) scoreVal.innerText = total_score; 
+    };
+  },
+  on_finish: () => { clearInterval(timerInterval); }
+};
+
+const travel_delay = {
+  type: jsPsychHtmlKeyboardResponse,
+  stimulus: `<h3>Traveling to a new bush...</h3><div class="progress-container"><div id="travel-bar" class="progress-bar"></div></div>`,
+  choices: "NO_KEYS",
+  trial_duration: 5000,
+  on_load: () => {
+    let start = performance.now();
+    let travelInterval = setInterval(() => {
+      let pct = ((performance.now() - start) / 5000) * 100;
+      let bar = document.getElementById('travel-bar');
+      if(bar) bar.style.width = pct + '%';
+      if(pct >= 100) clearInterval(travelInterval);
+    }, 50);
+  },
+  on_finish: () => {
+    // RESTORED: Reset the bush for the next trial
+    berries_in_patch = 30;
+  }
+};
 
 // --- TASK 3 INSTRUCTIONS ---
-  timeline.push({
-    type: jsPsychHtmlButtonResponse,
-    stimulus: `
-      <h2>Task 3: Visual Foraging</h2>
-      <p>Find the <b>RED SQUARES</b> in the grid.</p>
-      <p>Click <b>"Travel to New Bush"</b> to reset the patch (5s delay).</p>
-      <p>Goal: Collect as many as possible in <b>2 minutes</b>.</p>
-    `,
-    choices: ['Start Foraging']
-  });
+timeline.push({
+  type: jsPsychHtmlButtonResponse,
+  stimulus: `<h2>Task 3: Visual Foraging</h2><p>Find the red squares. Collect as many as you can in 2 minutes.</p>`,
+  choices: ['Start Foraging'],
+  on_finish: () => {
+    // Reset start time right before the loop begins
+    foraging_start_time = null; 
+  }
+});
 
-  // --- THE FORAGING LOOP ---
-  // This is the part that was missing! 
-  // It tells the experiment to keep alternating between the bush and the travel screen.
-  timeline.push({
-    timeline: [foraging_trial, travel_delay],
-    loop_function: function() {
-      // Keep looping as long as we haven't hit the 2-minute mark
-      // We check if start_time is null to ensure it runs the first time
-      if (foraging_start_time === null) return true;
-      return (performance.now() - foraging_start_time) < FORAGING_DURATION;
-    },
-    on_timeline_start: function() {
-      // Ensure the bush is full when the very first patch starts
-      berries_in_patch = 30;
-    }
-  });
-
+// --- THE FORAGING LOOP ---
+timeline.push({
+  timeline: [foraging_trial, travel_delay],
+  loop_function: () => {
+    if (!foraging_start_time) return true;
+    return (performance.now() - foraging_start_time) < FORAGING_DURATION;
+  }
+});
   
 // --- FINAL PHASE ---
   
@@ -375,6 +361,7 @@
   jsPsych.run(timeline);
 </script>
 </html>
+
 
 
 
