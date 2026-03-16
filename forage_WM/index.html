@@ -211,7 +211,6 @@
     });
   }
 
-  // --- FORAGING ---
 // --- 4. FORAGING ---
   let timerInterval; 
 
@@ -293,6 +292,36 @@
     }
   };
 
+// --- TASK 3 INSTRUCTIONS ---
+  timeline.push({
+    type: jsPsychHtmlButtonResponse,
+    stimulus: `
+      <h2>Task 3: Visual Foraging</h2>
+      <p>Find the <b>RED SQUARES</b> in the grid.</p>
+      <p>Click <b>"Travel to New Bush"</b> to reset the patch (5s delay).</p>
+      <p>Goal: Collect as many as possible in <b>2 minutes</b>.</p>
+    `,
+    choices: ['Start Foraging']
+  });
+
+  // --- THE FORAGING LOOP ---
+  // This is the part that was missing! 
+  // It tells the experiment to keep alternating between the bush and the travel screen.
+  timeline.push({
+    timeline: [foraging_trial, travel_delay],
+    loop_function: function() {
+      // Keep looping as long as we haven't hit the 2-minute mark
+      // We check if start_time is null to ensure it runs the first time
+      if (foraging_start_time === null) return true;
+      return (performance.now() - foraging_start_time) < FORAGING_DURATION;
+    },
+    on_timeline_start: function() {
+      // Ensure the bush is full when the very first patch starts
+      berries_in_patch = 30;
+    }
+  });
+
+  
 // --- FINAL PHASE ---
   
   // 1. Time is Up Screen
@@ -346,6 +375,7 @@
   jsPsych.run(timeline);
 </script>
 </html>
+
 
 
 
