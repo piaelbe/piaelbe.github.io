@@ -212,23 +212,21 @@
   }
 
   // --- FORAGING ---
-  timeline.push({
-    type: jsPsychHtmlButtonResponse,
-    stimulus: `
-      <h2>Task 3: Visual Foraging</h2>
-      <p>Find the <b>RED SQUARES</b> in the grid.</p>
-      <p>Click <b>"Travel to New Bush"</b> to reset the patch (5s delay).</p>
-      <p>Goal: Collect as many as possible in <b>2 minutes</b>.</p>
-    `,
-    choices: ['Start Foraging']
-  });
+// --- 4. FORAGING ---
+  let timerInterval; 
 
   const foraging_trial = {
     type: jsPsychHtmlButtonResponse,
     stimulus: () => {
       let elapsed = performance.now() - (foraging_start_time || performance.now());
       let remaining = Math.max(0, Math.ceil((FORAGING_DURATION - elapsed) / 1000));
-      return `<div class="ui-container"><div id="timer-display">Time: ${remaining}s</div><div id="score-display">Total Berries: <span id="score-value">${total_score}</span></div></div><p>Berries in current bush: ${berries_in_patch}</p>`;
+      return `
+        <div class="ui-container">
+          <div id="timer-display">Time: ${remaining}s</div>
+          <div id="score-display">Total Berries: <span id="score-value">${total_score}</span></div>
+        </div>
+        <p>Berries in current bush: ${berries_in_patch}</p>
+      `;
     },
     choices: ['Travel to New Bush (5s Delay)'],
     button_html: '<button class="travel-btn">%choice%</button>',
@@ -244,13 +242,32 @@
     },
     on_load: () => {
       if(!foraging_start_time) foraging_start_time = performance.now();
-      const timerInterval = setInterval(() => {
+      
+      // Clear any existing interval just in case
+      clearInterval(timerInterval);
+
+      timerInterval = setInterval(() => {
         let elapsed = performance.now() - foraging_start_time;
         let remaining = Math.max(0, Math.ceil((FORAGING_DURATION - elapsed) / 1000));
-        if (document.getElementById('timer-display')) document.getElementById('timer-display').innerText = `Time: ${remaining}s`;
-        if (remaining <= 0) { clearInterval(timerInterval); jsPsych.finishTrial(); }
+        
+        let timerDiv = document.getElementById('timer-display');
+        if (timerDiv) timerDiv.innerText = `Time: ${remaining}s`;
+        
+        if (remaining <= 0) {
+          clearInterval(timerInterval);
+          jsPsych.finishTrial(); // End the foraging trial because time is up
+        }
       }, 1000);
-      window.harvest = () => { berries_in_patch--; total_score++; if(document.getElementById('score-value')) document.getElementById('score-value').innerText = total_score; };
+
+      window.harvest = () => { 
+        berries_in_patch--; 
+        total_score++; 
+        let scoreVal = document.getElementById('score-value');
+        if(scoreVal) scoreVal.innerText = total_score; 
+      };
+    },
+    on_finish: () => {
+      clearInterval(timerInterval); // CRITICAL: Stop the timer when the user clicks 'Travel'
     }
   };
 
@@ -258,22 +275,23 @@
     type: jsPsychHtmlKeyboardResponse,
     stimulus: `<h3>Traveling to a new bush...</h3><div class="progress-container"><div id="travel-bar" class="progress-bar"></div></div>`,
     choices: "NO_KEYS",
-    trial_duration: 5000,
+    // This ensures that if there are only 2 seconds left, the travel delay only lasts 2 seconds
+    trial_duration: () => {
+      let elapsed = performance.now() - foraging_start_time;
+      let remaining = FORAGING_DURATION - elapsed;
+      return Math.min(5000, Math.max(0, remaining)); 
+    },
     on_load: () => {
       let start = performance.now();
-      let interval = setInterval(() => {
-        let percent = ((performance.now() - start) / 5000) * 100;
-        if(document.getElementById('travel-bar')) document.getElementById('travel-bar').style.width = percent + '%';
-        if(percent >= 100) clearInterval(interval);
+      let travelInterval = setInterval(() => {
+        let trial_dur = jsPsych.getCurrentTrial().trial_duration;
+        let pct = ((performance.now() - start) / trial_dur) * 100;
+        let bar = document.getElementById('travel-bar');
+        if(bar) bar.style.width = pct + '%';
+        if(pct >= 100) clearInterval(travelInterval);
       }, 50);
     }
   };
-
-  timeline.push({
-    timeline: [foraging_trial, travel_delay],
-    loop_function: () => (performance.now() - foraging_start_time) < FORAGING_DURATION,
-    on_timeline_start: () => { berries_in_patch = 30; }
-  });
 
 // --- FINAL PHASE ---
   
@@ -304,7 +322,7 @@
       <div style="max-width: 800px; text-align: left; margin: 0 auto; line-height: 1.6;">
         <h2 style="text-align: center;">Study Debriefing</h2>
         <p>Thank you for participating! In this study, you completed three distinct tasks: a letter-matching memory task (N-back), a number sequence recall task, and a visual search task (foraging).</p>
-        <p><strong>The Purpose:</strong> We are investigating the relationship between "Cognitive Control" and "Foraging Behavior." Specifically, we want to see if performance on memory tasks predicts how people decide to switch between patches. This research is informed by <strong>Elbe et al. (2025)</strong>.</p>
+        <p><strong>The Purpose:</strong> We are investigating the relationship between "Cognitive Control" and "Foraging Behavior." Specifically, we want to see if performance on memory tasks predicts how people decide to switch between patches. </p>
         <p><strong>Contact Information:</strong> If you have questions, please contact the lead researcher at:<br>
         <strong style="color: #2980b9;">pia.elbe@uni-konstanz.de</strong></p>
         <hr><p>Clicking the button below will save your data and redirect you to Prolific.</p>
@@ -328,6 +346,7 @@
   jsPsych.run(timeline);
 </script>
 </html>
+
 
 
 
