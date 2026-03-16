@@ -46,7 +46,7 @@
   let total_score = 0;
   let berries_in_patch = 30;
   let foraging_start_time = null;
-  const FORAGING_DURATION = 5000;
+  const FORAGING_DURATION = 120000;
 
   // 0. SCREEN SIZE CHECK
   timeline.push({
@@ -140,7 +140,7 @@
 
   const letters = ['B', 'C', 'D', 'F', 'G', 'H', 'J', 'K', 'L', 'M', 'N', 'P', 'R', 'S', 'T'];
   let nback_stimuli = [];
-  for (let i = 0; i < 10; i++) nback_stimuli.push(jsPsych.randomization.sampleWithReplacement(letters, 1)[0]);
+  for (let i = 0; i < 50; i++) nback_stimuli.push(jsPsych.randomization.sampleWithReplacement(letters, 1)[0]);
   let match_indices = jsPsych.randomization.sampleWithoutReplacement([...Array(48).keys()].map(x => x + 2), 20);
   match_indices.forEach(idx => nback_stimuli[idx] = nback_stimuli[idx - 2]);
 
@@ -169,7 +169,7 @@
     choices: ['Begin Task']
   });
 
-  for (let i = 0; i < 2; i++) {
+  for (let i = 0; i < 10; i++) {
     let trial_sequence = jsPsych.randomization.sampleWithoutReplacement(digits, 7);
     trial_sequence.forEach(digit => {
       timeline.push({
@@ -328,6 +328,7 @@
   jsPsych.run(timeline);
 </script>
 </html>
+
 
 
 
