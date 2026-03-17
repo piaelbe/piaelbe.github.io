@@ -68,7 +68,7 @@
         <h2 style="text-align: center;">Informed Consent</h2>
         <p><strong>About the Study</strong><br>
         This research investigates the relationship between behavioral foraging patterns (how we make decisions about rewards) and working memory capacity. You will perform a memory task followed by a decision-making "patch-leaving" task.</p>
-        <p><strong>Duration</strong><br>The study will take approximately 15 minutes to complete.</p>
+        <p><strong>Duration</strong><br>The experiment will take approximately 10 minutes to complete.</p>
         <p><strong>Eligibility</strong><br>Participants must be at least 18 years of age, have normal or corrected-to-normal vision, and have a fluent command of English. We recommend completing this in a quiet environment.</p>
         <p><strong>Data Privacy & Voluntary Participation</strong><br>Your responses and decisions will be recorded, stored, and reported <strong>anonymously</strong> by the Department of Psychology, University of Konstanz. Participation is entirely voluntary. You may withdraw from the study at any time without providing a reason and without any negative consequences. Your data will be handled confidentially in accordance with applicable data protection regulations.</p>
         <hr>
@@ -217,7 +217,6 @@ let timerInterval;
 const foraging_trial = {
   type: jsPsychHtmlButtonResponse,
   stimulus: () => {
-    // Only calculate time if we've actually started foraging
     let elapsed = foraging_start_time ? (performance.now() - foraging_start_time) : 0;
     let remaining = Math.max(0, Math.ceil((FORAGING_DURATION - elapsed) / 1000));
     return `
@@ -230,10 +229,17 @@ const foraging_trial = {
   },
   choices: ['Travel to New Bush (5s Delay)'],
   button_html: '<button class="travel-btn">%choice%</button>',
+  // This records the specific berry counts for this trial in the CSV
+  data: () => {
+    return {
+      task: 'foraging_patch',
+      berries_collected_in_this_patch: 30 - berries_in_patch,
+      total_accumulated_score: total_score
+    };
+  },
   prompt: () => {
     let grid = '<div class="foraging-grid">';
     let items = Array(400).fill('dist');
-    // FIX: Ensure berries_in_patch never goes below 0 to prevent crashes
     let count = Math.max(0, berries_in_patch);
     jsPsych.randomization.sampleWithoutReplacement([...Array(400).keys()], count).forEach(idx => items[idx] = 'target');
     items.forEach(type => {
@@ -243,7 +249,6 @@ const foraging_trial = {
     return grid + '</div>';
   },
   on_load: () => {
-    // START TIMER if not started
     if (!foraging_start_time) foraging_start_time = performance.now();
 
     timerInterval = setInterval(() => {
@@ -273,6 +278,13 @@ const travel_delay = {
   stimulus: `<h3>Traveling to a new bush...</h3><div class="progress-container"><div id="travel-bar" class="progress-bar"></div></div>`,
   choices: "NO_KEYS",
   trial_duration: 5000,
+  // Records the score at the moment they decided to travel
+  data: () => {
+    return {
+      task: 'travel_delay',
+      score_at_departure: total_score
+    };
+  },
   on_load: () => {
     let start = performance.now();
     let travelInterval = setInterval(() => {
@@ -283,8 +295,7 @@ const travel_delay = {
     }, 50);
   },
   on_finish: () => {
-    // RESTORED: Reset the bush for the next trial
-    berries_in_patch = 30;
+    berries_in_patch = 30; // Reset for the next patch
   }
 };
 
@@ -294,7 +305,6 @@ timeline.push({
   stimulus: `<h2>Task 3: Visual Foraging</h2><p>Find the red squares. Collect as many as you can in 2 minutes.</p>`,
   choices: ['Start Foraging'],
   on_finish: () => {
-    // Reset start time right before the loop begins
     foraging_start_time = null; 
   }
 });
