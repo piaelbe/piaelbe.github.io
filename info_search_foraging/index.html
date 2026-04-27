@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Honeycomb Cognitive Task</title>
+    <title>Searching for Information Task</title>
     <style>
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
@@ -131,10 +131,10 @@
 
 <div class="container">
     <div id="setup-screen">
-        <h1>Honeycomb Path Experiment</h1>
-        <p>Find hidden words in the grid. Letters must be adjacent.</p>
-        <p><strong>Rules:</strong> +10 pts for correct | -5 pts for giving up (Score floor is 0)</p>
-        <p><strong>Time Limit:</strong> 3 Minutes</p>
+        <h1>Searching for Information Task</h1>
+        <p>Find hidden words in the grid according to the hint. Letters must be adjacent. The path can go in any direction.</p>
+        <p><strong>Rules:</strong> +10 points for correct   -5 points for giving up.</p>
+        <p><strong>Time Limit:</strong> 3 minutes</p>
         <button class="btn-primary" onclick="startExperiment()">Start Experiment</button>
     </div>
 
@@ -161,7 +161,7 @@
     <div id="finish-screen" class="hidden">
         <h2 id="finish-title">Experiment Complete</h2>
         <p>Final Score: <strong id="final-score-val">0</strong></p>
-        <p>Correct Solves: <span id="final-correct"></span> | Give Ups: <span id="final-giveup"></span></p>
+        <p>Correct Solves: <span id="final-correct"></span> and Give Ups: <span id="final-giveup"></span></p>
         <div id="data-output"></div>
     </div>
 </div>
