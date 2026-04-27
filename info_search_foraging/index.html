@@ -1,0 +1,424 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Honeycomb Cognitive Task</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f0f2f5;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            margin: 0;
+            color: #2c3e50;
+        }
+
+        .container { text-align: center; max-width: 950px; }
+        
+        .instructions {
+            background: #fff;
+            padding: 20px;
+            border-radius: 12px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+            position: relative;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            min-height: 60px;
+        }
+
+        .stats-display {
+            display: flex;
+            gap: 15px;
+        }
+
+        .stat-badge {
+            background: #2c3e50;
+            color: #fff;
+            padding: 8px 15px;
+            border-radius: 20px;
+            font-weight: bold;
+            font-size: 16px;
+            min-width: 100px;
+        }
+
+        .timer-warning { background: #e53e3e !important; animation: blink 1s infinite; }
+        @keyframes blink { 50% { opacity: 0.7; } }
+
+        .word-display {
+            font-size: 36px;
+            font-weight: bold;
+            height: 50px;
+            border-bottom: 4px solid #34495e;
+            min-width: 300px;
+            margin: 0 auto 25px auto;
+            letter-spacing: 10px;
+            color: #2c3e50;
+            text-transform: uppercase;
+        }
+
+        svg { display: block; margin: 0 auto; overflow: visible; cursor: default; }
+
+        .hex-polygon {
+            fill: #ffffff;
+            stroke: #cbd5e0;
+            stroke-width: 2;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .hex-text {
+            font-size: 22px;
+            font-weight: 900;
+            fill: #2c3e50;
+            pointer-events: none;
+            user-select: none;
+            text-anchor: middle;
+            dominant-baseline: central;
+        }
+
+        .hex-group:hover .hex-polygon { fill: #edf2f7; stroke: #a0aec0; }
+        .hex-group.selected .hex-polygon { fill: #48bb78; stroke: #2f855a; stroke-width: 3; }
+        .hex-group.selected .hex-text { fill: #ffffff; }
+        .hex-group.reveal .hex-polygon { fill: #fc8181; stroke: #e53e3e; stroke-width: 4; }
+        .hex-group.reveal .hex-text { fill: #ffffff; }
+
+        .controls {
+            margin-top: 30px;
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+        }
+
+        button {
+            padding: 14px 28px;
+            font-size: 16px;
+            cursor: pointer;
+            border: none;
+            border-radius: 8px;
+            font-weight: bold;
+            transition: transform 0.1s, opacity 0.2s;
+        }
+
+        button:active { transform: scale(0.96); }
+        .btn-primary { background: #3182ce; color: white; }
+        .btn-success { background: #38a169; color: white; }
+        .btn-danger { background: #e53e3e; color: white; }
+        .btn-secondary { background: #718096; color: white; }
+
+        #data-output {
+            text-align: left;
+            background: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            max-height: 300px;
+            overflow-y: auto;
+            font-family: monospace;
+            font-size: 12px;
+            margin-top: 20px;
+            box-shadow: inset 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .hidden { display: none !important; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div id="setup-screen">
+        <h1>Honeycomb Path Experiment</h1>
+        <p>Find hidden words in the grid. Letters must be adjacent.</p>
+        <p><strong>Rules:</strong> +10 pts for correct | -5 pts for giving up (Score floor is 0)</p>
+        <p><strong>Time Limit:</strong> 3 Minutes</p>
+        <button class="btn-primary" onclick="startExperiment()">Start Experiment</button>
+    </div>
+
+    <div id="game-screen" class="hidden">
+        <div class="instructions">
+            <div><strong>Trial <span id="trial-num">1</span>:</strong> <span id="category-hint"></span></div>
+            <div class="stats-display">
+                <div class="stat-badge" id="timer-display">Time: 03:00</div>
+                <div class="stat-badge">Score: <span id="current-score">0</span></div>
+            </div>
+        </div>
+
+        <div class="word-display" id="current-word"></div>
+
+        <div id="svg-container"></div>
+
+        <div class="controls">
+            <button class="btn-secondary" onclick="clearSelection()">Clear</button>
+            <button class="btn-danger" onclick="giveUp()">I Give Up</button>
+            <button class="btn-success" onclick="checkAnswer()">Submit Word</button>
+        </div>
+    </div>
+
+    <div id="finish-screen" class="hidden">
+        <h2 id="finish-title">Experiment Complete</h2>
+        <p>Final Score: <strong id="final-score-val">0</strong></p>
+        <p>Correct Solves: <span id="final-correct"></span> | Give Ups: <span id="final-giveup"></span></p>
+        <div id="data-output"></div>
+    </div>
+</div>
+
+<script>
+    const allPuzzles = [
+        { category: "ANIMALS", target: "TIGER" }, { category: "FRUITS", target: "APPLE" },
+        { category: "VEHICLES", target: "BICYCLE" }, { category: "CLOTHING", target: "JACKET" },
+        { category: "FURNITURE", target: "CHAIR" }, { category: "KITCHEN", target: "SPOON" },
+        { category: "WEATHER", target: "THUNDER" }, { category: "SPACE", target: "PLANET" },
+        { category: "SPORTS", target: "HOCKEY" }, { category: "MUSIC", target: "GUITAR" },
+        { category: "NATURE", target: "FOREST" }, { category: "TOOLS", target: "HAMMER" },
+        { category: "BODY", target: "ELBOW" }, { category: "INSECTS", target: "BEETLE" },
+        { category: "DRINKS", target: "COFFEE" }, { category: "COLORS", target: "ORANGE" },
+        { category: "TIME", target: "MINUTE" }, { category: "BUILDINGS", target: "CASTLE" },
+        { category: "FLOWERS", target: "ORCHID" }, { category: "OFFICE", target: "PENCIL" }
+    ];
+
+    let randomizedPuzzles = [];
+    let experimentLog = [];
+    let startTime;
+    let currentSelection = [];
+    let currentWordIdx = 0;
+    let gridData = [];
+    let targetPathIds = [];
+    let currentScore = 0;
+    let totalCorrect = 0;
+    let totalGiveUps = 0;
+    let trialClicks = 0;
+
+    // Timer logic
+    let timeLeft = 180; // 3 minutes in seconds
+    let timerInterval;
+
+    const hexRadius = 42;
+    const hexWidth = Math.sqrt(3) * hexRadius;
+    const yOffset = (2 * hexRadius) * 0.75;
+    const rowStructure = [4, 5, 4, 5, 4];
+
+    function shuffle(array) {
+        for (let i = array.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [array[i], array[j]] = [array[j], array[i]];
+        }
+        return array;
+    }
+
+    function startExperiment() {
+        randomizedPuzzles = shuffle([...allPuzzles]);
+        document.getElementById('setup-screen').classList.add('hidden');
+        document.getElementById('game-screen').classList.remove('hidden');
+        
+        startTimer();
+        loadPuzzle();
+    }
+
+    function startTimer() {
+        timerInterval = setInterval(() => {
+            timeLeft--;
+            updateTimerUI();
+            if (timeLeft <= 0) {
+                clearInterval(timerInterval);
+                finishExperiment("TIME_EXPIRED");
+            }
+        }, 1000);
+    }
+
+    function updateTimerUI() {
+        const mins = Math.floor(timeLeft / 60);
+        const secs = timeLeft % 60;
+        const display = document.getElementById('timer-display');
+        display.innerText = `Time: ${mins}:${secs.toString().padStart(2, '0')}`;
+        
+        if (timeLeft <= 30) display.classList.add('timer-warning');
+    }
+
+    function getNeighbors(r, c) {
+        const evenRow = (r % 2 === 0);
+        const directions = evenRow ? 
+            [[ -1, 0 ], [ -1, 1 ], [ 0, -1 ], [ 0, 1 ], [ 1, 0 ], [ 1, 1 ]] :
+            [[ -1, -1 ], [ -1, 0 ], [ 0, -1 ], [ 0, 1 ], [ 1, -1 ], [ 1, 0 ]];
+        return directions.map(([dr, dc]) => ({r: r + dr, c: c + dc}))
+                         .filter(n => n.r >= 0 && n.r < rowStructure.length && n.c >= 0 && n.c < rowStructure[n.r]);
+    }
+
+    function createContiguousPath(word) {
+        const letters = word.split('');
+        let path = [];
+        let attempts = 0;
+        while (path.length < letters.length && attempts < 200) {
+            path = []; attempts++;
+            let currR = Math.floor(Math.random() * rowStructure.length);
+            let currC = Math.floor(Math.random() * rowStructure[currR]);
+            path.push({r: currR, c: currC, char: letters[0]});
+            for (let i = 1; i < letters.length; i++) {
+                const available = getNeighbors(currR, currC).filter(n => !path.some(p => p.r === n.r && p.c === n.c));
+                if (available.length === 0) break;
+                const next = available[Math.floor(Math.random() * available.length)];
+                path.push({r: next.r, c: next.c, char: letters[i]});
+                currR = next.r; currC = next.c;
+            }
+        }
+        return path;
+    }
+
+    function loadPuzzle() {
+        const puzzle = randomizedPuzzles[currentWordIdx];
+        document.getElementById('category-hint').innerText = puzzle.category;
+        document.getElementById('trial-num').innerText = (currentWordIdx + 1);
+        document.getElementById('current-score').innerText = currentScore;
+        
+        currentSelection = []; gridData = []; targetPathIds = []; trialClicks = 0;
+        const svgContainer = document.getElementById('svg-container');
+        svgContainer.innerHTML = '';
+
+        const path = createContiguousPath(puzzle.target);
+        const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+
+        rowStructure.forEach((cols, r) => {
+            for (let c = 0; c < cols; c++) {
+                const pathNode = path.find(p => p.r === r && p.c === c);
+                const char = pathNode ? pathNode.char : alphabet[Math.floor(Math.random() * 26)];
+                const id = `hex-${r}-${c}`;
+                let cx = (c * hexWidth) + hexWidth;
+                if (r % 2 === 0) cx += hexWidth / 2;
+                let cy = (r * yOffset) + hexRadius;
+                const node = { r, c, char, id, cx, cy };
+                gridData.push(node);
+                if (pathNode) targetPathIds.push(id);
+            }
+        });
+        renderSVG();
+        updateDisplay();
+        startTime = performance.now();
+    }
+
+    function renderSVG() {
+        const svgNS = "http://www.w3.org/2000/svg";
+        const svg = document.createElementNS(svgNS, "svg");
+        svg.setAttribute("width", "550"); svg.setAttribute("height", "400");
+        gridData.forEach(node => {
+            const g = document.createElementNS(svgNS, "g");
+            g.setAttribute("class", "hex-group"); g.setAttribute("id", node.id);
+            g.onclick = () => handleHexClick(node);
+            const poly = document.createElementNS(svgNS, "polygon");
+            poly.setAttribute("class", "hex-polygon");
+            poly.setAttribute("points", getHexPoints(node.cx, node.cy, hexRadius));
+            const text = document.createElementNS(svgNS, "text");
+            text.setAttribute("class", "hex-text"); text.setAttribute("x", node.cx);
+            text.setAttribute("y", node.cy); text.textContent = node.char;
+            g.appendChild(poly); g.appendChild(text); svg.appendChild(g);
+        });
+        document.getElementById('svg-container').appendChild(svg);
+    }
+
+    function getHexPoints(cx, cy, r) {
+        let pts = [];
+        for (let i = 0; i < 6; i++) {
+            let angle = (Math.PI / 180) * (60 * i - 30);
+            pts.push(`${cx + r * Math.cos(angle)},${cy + r * Math.sin(angle)}`);
+        }
+        return pts.join(" ");
+    }
+
+    function handleHexClick(node) {
+        trialClicks++;
+        const el = document.getElementById(node.id);
+        const alreadySelected = currentSelection.some(s => s.id === node.id);
+        if (alreadySelected) {
+            if (currentSelection[currentSelection.length - 1].id === node.id) {
+                currentSelection.pop(); el.classList.remove('selected');
+            }
+        } else {
+            if (currentSelection.length === 0) {
+                currentSelection.push(node); el.classList.add('selected');
+            } else {
+                const last = currentSelection[currentSelection.length - 1];
+                const neighbors = getNeighbors(last.r, last.c);
+                if (neighbors.some(n => n.r === node.r && n.c === node.c)) {
+                    currentSelection.push(node); el.classList.add('selected');
+                }
+            }
+        }
+        updateDisplay();
+    }
+
+    function updateDisplay() {
+        document.getElementById('current-word').innerText = currentSelection.map(s => s.char).join('');
+    }
+
+    function clearSelection() {
+        document.querySelectorAll('.hex-group').forEach(el => el.classList.remove('selected'));
+        currentSelection = []; updateDisplay();
+    }
+
+    function checkAnswer() {
+        const userWord = currentSelection.map(s => s.char).join('');
+        if (userWord === randomizedPuzzles[currentWordIdx].target) {
+            currentScore += 10; totalCorrect++;
+            logTrial("SUBMIT", true);
+            alert("Correct! +10 Points");
+            nextTrial();
+        } else {
+            alert("Incorrect path. Try again!");
+        }
+    }
+
+    function giveUp() {
+        currentScore = Math.max(0, currentScore - 5); // Zero floor
+        totalGiveUps++;
+        targetPathIds.forEach(id => document.getElementById(id).classList.add('reveal'));
+        setTimeout(() => {
+            logTrial("GAVE_UP", false);
+            nextTrial();
+        }, 1500);
+    }
+
+    function logTrial(type, corr) {
+        const rt = Math.round(performance.now() - startTime);
+        experimentLog.push({
+            trial_index: currentWordIdx + 1,
+            category: randomizedPuzzles[currentWordIdx].category,
+            target_word: randomizedPuzzles[currentWordIdx].target,
+            response_type: type,
+            is_correct: corr ? 1 : 0,
+            rt_ms: rt,
+            click_count: trialClicks,
+            final_trial_score: currentScore,
+            time_remaining: timeLeft,
+            timestamp: new Date().toISOString()
+        });
+    }
+
+    function nextTrial() {
+        currentWordIdx++;
+        if (currentWordIdx < randomizedPuzzles.length) {
+            loadPuzzle();
+        } else {
+            finishExperiment("COMPLETION");
+        }
+    }
+
+    function finishExperiment(reason) {
+        clearInterval(timerInterval);
+        document.getElementById('game-screen').classList.add('hidden');
+        document.getElementById('finish-screen').classList.remove('hidden');
+        
+        if(reason === "TIME_EXPIRED") {
+            document.getElementById('finish-title').innerText = "Time's Up!";
+        }
+
+        document.getElementById('final-score-val').innerText = currentScore;
+        document.getElementById('final-correct').innerText = totalCorrect;
+        document.getElementById('final-giveup').innerText = totalGiveUps;
+        document.getElementById('data-output').innerText = JSON.stringify(experimentLog, null, 2);
+    }
+</script>
+
+</body>
+</html>
