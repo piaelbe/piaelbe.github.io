@@ -2,224 +2,417 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>The Meerkat Decision Task</title>
+    <title>Meerkat Ecological Task - Full Protocol</title>
     <style>
         body { background: #e0c5a8; font-family: 'Arial', sans-serif; text-align: center; margin: 0; overflow: hidden; }
-        #ui { background: #5d2e0c; color: white; padding: 15px; display: flex; justify-content: space-around; border-bottom: 4px solid #3e1f08; }
+        #ui { background: #3e2723; color: white; padding: 10px 15px; display: flex; justify-content: space-between; align-items: center; border-bottom: 4px solid #212121; font-size: 14px; }
+        .ui-stat { display: flex; flex-direction: column; align-items: flex-start; }
         canvas { background: #d2b48c; border: 5px solid #8b4513; margin-top: 10px; display: block; margin-left: auto; margin-right: auto; box-shadow: 0 10px 30px rgba(0,0,0,0.4); }
-        #overlay { position: fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.85); color:white; display:flex; justify-content:center; align-items:center; z-index:100; }
-        .modal { background: #fff; color: #333; padding: 30px; border-radius: 15px; max-width: 500px; border: 5px solid #8b4513; }
-        button { padding: 15px 30px; font-size: 20px; cursor: pointer; background: #8b4513; color: white; border: none; border-radius: 5px; }
+        
+        #overlay { position: fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.9); color:#333; display:flex; justify-content:center; align-items:center; z-index:100; overflow-y: auto;}
+        .modal { background: #fff; padding: 30px; border-radius: 15px; max-width: 600px; border: 5px solid #8b4513; margin: 20px; line-height: 1.5; }
+        .scroll-box { height: 280px; overflow-y: scroll; border: 1px solid #ccc; padding: 15px; background: #f9f9f9; margin-bottom: 20px; font-size: 0.9em; text-align: left;}
+        
+        button.primary { padding: 15px 30px; font-size: 18px; cursor: pointer; background: #8b4513; color: white; border: none; border-radius: 5px; font-weight: bold; width: 100%;}
+        button.primary:disabled { background: #ccc; cursor: not-allowed; }
+        button.action { padding: 10px 20px; background: #4CAF50; border: none; border-radius: 4px; color: #fff; font-weight: bold; cursor: pointer; border-bottom: 3px solid #2e7d32;}
+        button.action:hover { background: #45a049; }
+        button.action:disabled { background: #777; border-bottom-color: #555; cursor: not-allowed; }
     </style>
 </head>
 <body>
 
     <div id="overlay">
-        <div class="modal">
-            <h1>🦂 Meerkat Decision Task 🦂</h1>
-<h2>Instructions</h2>
-            <p>Welcome to the <b>Meerkat Decision Task</b>. Your goal is to survive and protect the mob.</p>
-            <ul>
-                <b>Move:</b> Use Arrow Keys.</li>
-                <b>Forage:</b> Follow your "Whiskers" (rings). Green means you are close. Hold <b>SPACE</b> to dig up scorpions 🦂.</li>
-                <b>Sentry:</b> Go to the <b>Grey Rock</b> on the right. Press <b>S</b> when you spot a predator.</li>
-                <b>Survival:</b> Don't let your hunger reach 100%, and watch out for Eagles 🦅 and Snakes 🐍!</li>
-            </ul>
-            <button id="startBtn" onclick="initGame()">START SESSION</button>
+        <div class="modal" id="modalContent">
+            <h2 style="color: #8b4513; margin-top: 0;"> Informed Consent & Briefing</h2>
+            <div class="scroll-box">
+                <p><b>Study Title:</b> Behavioral Ecology and Decision Sensitivity in <i>Suricata suricatta</i> Simulations.</p>
+                <p><b>Purpose:</b> This research investigates the trade-off between foraging efficiency and anti-predator vigilance. You are acting as a proxy for a meerkat in a high-risk environment.</p>
+                <p><b>Procedures:</b></p>
+                <ul>
+                    <li><b>Movement:</b> Use Arrow Keys to navigate the environment.</li>
+                    <li><b>Foraging:</b> Hold <b>SPACE</b> to dig for scorpions. Visual "whisker" rings indicate your search radius. As a patch depletes, your sensory radius shrinks, making it harder to find remaining scorpions.</li>
+                    <li><b>Patches:</b> You must decide when to leave a depleted area by clicking <b>"MOVE TO NEW PATCH"</b> or pressing <b>P</b>. This incurs a metabolic cost and requires traveling time.</li>
+                    <li><b>Vigilance:</b> Move to the <b>Sentry Rock</b> (Right side) to scan for predators. Predators are invisible (audible only) unless you are on the rock. Press <b>S</b> while on the rock to sound an alarm. Another community member may sometimes watch from the left rock, but their reliability may vary.</li>
+                    <li><b>Survival:</b> Your mob (25 members) depends on vigilance. Failure to spot predators results in a risk of a mob member being snatched. Risk scales with group size.</li>
+                </ul>
+                <p><b>Confidentiality:</b> All performance data is anonymized. By clicking below, you consent to provide behavioral data.</p>
+            </div>
+            <button class="primary" onclick="initGame()">I CONSENT & START SESSION</button>
         </div>
     </div>
 
     <div id="ui">
-        <div>Hunger: <span id="hungerUI">50</span>%</div>
-        <div>Social Capital: <span id="socialUI">100</span></div>
-        <div>Role: <b id="roleUI">Forager</b></div>
+        <div class="ui-stat"><b>Hunger:</b> <span id="hungerUI">50</span>%</div>
+        <div class="ui-stat"><b>Social Capital:</b> <span id="socialUI">100</span></div>
+        <div class="ui-stat"><b>Mob Size:</b> <span id="mobUI">25</span></div>
+        <div class="ui-stat"><b>Patch Quality:</b> <span id="patchUI">100</span>%</div>
+        <div class="ui-stat"><button class="action" id="patchBtn" onclick="switchPatch()">MOVE TO NEW PATCH (P)</button></div>
     </div>
 
     <canvas id="gameCanvas" width="800" height="500"></canvas>
 
 <script>
+// =========================================================================
+// 🎛️ EXPERIMENTAL PARAMETERS (Vary these to change task conditions)
+// =========================================================================
+const NPC_RELIABILITY       = 0.01;  // 1. Chance per frame the automated sentry clears predator (0.01 = original)
+const FORAGE_DEPLETION_RATE  = 1.0;   // 2. Multiplier for food depletion (higher = faster resource drop)
+const PREDATOR_KILL_CHANCE   = 0.40;  // 3. Base probability (40%) a mob member dies if predator passes unspotted
+const PATCH_TRAVEL_TIME_MS   = 5000;  // 4. Travel penalty when changing patches (5000ms = 5 seconds)
+// =========================================================================
+
+// --- DataPipe & Subject Configuration ---
+const DATAPIPE_ID = "YOUR_EXPERIMENT_ID_HERE"; 
+const subjectId = "SUBJ_" + Math.floor(Math.random() * 100000); 
+
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
 
-// --- Asset Setup ---
+// --- Asset Initialization ---
 let assets = {
-    meerkat: { img: new Image(), src: 'nibman-meerkat-8028985_1280.jpg', loaded: false },
+    meerkatDig: { img: new Image(), src: 'meerkat_digging.png', loaded: false },
+    meerkatRock: { img: new Image(), src: 'meerkat_on_rock.png', loaded: false },
+    smallMeerkat: { img: new Image(), src: 'small_meerkat.png', loaded: false },
+    eagle: { img: new Image(), src: 'martial_eagle.png', loaded: false },
+    cloud1: { img: new Image(), src: 'cloud1.png', loaded: false },
+    cloud2: { img: new Image(), src: 'cloud2.png', loaded: false },
+    cloud3: { img: new Image(), src: 'cloud3.png', loaded: false },
     music: { snd: new Audio('tatamusic-game-gaming-video-game-music-482380.mp3'), loaded: false },
     sniff: { snd: new Audio('freesound_community-sniffing-77608.mp3'), loaded: false },
     scratch: { snd: new Audio('freesound_community-scratching-85152.mp3'), loaded: false },
-    hawk: { snd: new Audio('dragon-studio-hawk-call-sound-effect-hawk-cry-364472.mp3'), loaded: false },
-    snake: { snd: new Audio('tanweraman-snake-rattle-sound-hq-240150.mp3'), loaded: false }
+    hawk: { snd: new Audio('dragon-studio-hawk-call-sound-effect-hawk-cry-364472.mp3'), loaded: false }
 };
 
-// Image Load Check
-assets.meerkat.img.onload = () => {
-    console.log("Meerkat image successfully loaded.");
-    assets.meerkat.loaded = true;
-};
-assets.meerkat.img.onerror = () => console.error("IMAGE ERROR: Check if filename is exactly nibman-meerkat-8028985_1280.jpg");
-assets.meerkat.img.src = assets.meerkat.src;
-
-// Audio Load Checks
-Object.values(assets).forEach(a => {
-    if(a.snd) {
-        a.snd.oncanplaythrough = () => a.loaded = true;
-        a.snd.onerror = () => console.log("Audio file missing:", a.snd.src);
-    }
+Object.keys(assets).forEach(key => {
+    let a = assets[key];
+    if (a.img) { a.img.onload = () => a.loaded = true; a.img.src = a.src; }
+    else if (a.snd) { a.snd.oncanplaythrough = () => a.loaded = true; }
 });
 
+// --- Simulation State ---
 let gameStarted = false;
+let gameActive = true;
+let isTraveling = false; // Tracks if player is currently locked in transition state
+let travelEndTime = 0;   // Timestamp for when travel completes
 let player = { x: 400, y: 400, w: 50, h: 75, hunger: 50, social: 100 };
-let scorpion = { x: Math.random() * 600 + 100, y: 350 + Math.random() * 100 };
-let predator = { x: -100, y: 60, active: false, type: 'eagle', timer: 0 };
+let mobSize = 25;
+
+// MVT Foraging Variables
+let maxFoodInPatch = 10;
+let foodInPatch = 10;
+let detectionRadius = 60; 
+
+let scorpion = { x: 300, y: 380 };
+let emojiTimer = 0;
+let predator = { x: -200, y: 60, active: false, timer: 0 };
+let npcRock = { active: false };
 let logs = [];
+
+let clouds = [
+    {x: -100, y: 10, w: 350, h: 200, speed: 0.7, type: 'cloud1'}, 
+    {x: 400, y: -20, w: 400, h: 250, speed: 0.9, type: 'cloud2'}, 
+    {x: 800, y: 20, w: 320, h: 180, speed: 0.6, type: 'cloud3'}
+];
+
+// --- Telemetry Function ---
+function logDataPoint(eventType, metadata = {}) {
+    let patchQuality = Math.max(0, Math.floor((foodInPatch / maxFoodInPatch) * 100));
+    logs.push({
+        subjectId: subjectId,
+        timestamp: Date.now(),
+        event: eventType,
+        hunger: player.hunger.toFixed(2),
+        socialCapital: player.social.toFixed(2),
+        mobSize: mobSize,
+        patchQualityPercent: patchQuality,
+        detectionRadius: detectionRadius.toFixed(2),
+        onRock: (player.x > 680 && player.y < 350) ? 1 : 0,
+        predatorActive: predator.active ? 1 : 0,
+        isTraveling: isTraveling ? 1 : 0,
+        config_NpcReliability: NPC_RELIABILITY,
+        config_DepletionRate: FORAGE_DEPLETION_RATE,
+        config_KillChance: PREDATOR_KILL_CHANCE,
+        config_TravelTime: PATCH_TRAVEL_TIME_MS,
+        ...metadata
+    });
+}
 
 function initGame() {
     document.getElementById('overlay').style.display = 'none';
     gameStarted = true;
-    
-    // Set Volume and Start Music
-    if(assets.music.loaded || true) { // Force attempt
-        assets.music.snd.volume = 0.1; // 10% Volume
-        assets.music.snd.loop = true;
-        assets.music.snd.play().catch(e => console.log("Audio play blocked by browser. Click again."));
-    }
-    
+    logDataPoint("GAME_START");
+    if(assets.music.loaded) { assets.music.snd.volume = 0.1; assets.music.snd.loop = true; assets.music.snd.play(); }
     requestAnimationFrame(gameLoop);
 }
 
+// --- Controls ---
 const keys = {};
-window.onkeydown = e => { keys[e.code] = true; if(e.code === 'KeyD') downloadCSV(); };
+window.onkeydown = e => { keys[e.code] = true; if(e.code === 'KeyP') switchPatch(); };
 window.onkeyup = e => { 
     keys[e.code] = false; 
-    if(assets.sniff.snd) assets.sniff.snd.pause(); 
-    if(assets.scratch.snd) assets.scratch.snd.pause(); 
+    if(assets.sniff.snd) assets.sniff.snd.pause();
+    if(assets.scratch.snd) assets.scratch.snd.pause();
 };
 
-function spawnPredator() {
-    if (!gameStarted || predator.active) return;
-    predator.active = true;
-    predator.type = Math.random() > 0.5 ? 'eagle' : 'snake';
+function switchPatch() {
+    if(!gameActive || isTraveling) return;
     
-    if (predator.type === 'eagle') {
-        predator.x = -50; predator.y = 60;
-        if(assets.hawk.loaded) assets.hawk.snd.play();
-    } else {
-        predator.x = 850; predator.y = 440;
-        if(assets.snake.loaded) assets.snake.snd.play();
-    }
-    predator.timer = Date.now();
-    logs.push({ event: "PREDATOR_SPAWN", type: predator.type, time: Date.now() });
+    logDataPoint("PATCH_SWITCHED_START");
+
+    isTraveling = true;
+    travelEndTime = Date.now() + PATCH_TRAVEL_TIME_MS;
+    document.getElementById('patchBtn').disabled = true;
+
+    // Apply instantaneous metabolic cost of moving
+    player.hunger = Math.min(100, player.hunger + 12); 
+
+    setTimeout(() => {
+        if (!gameActive) return;
+        isTraveling = false;
+        maxFoodInPatch = Math.floor(Math.random() * 8) + 5; 
+        foodInPatch = maxFoodInPatch; 
+        scorpion = { x: 150 + Math.random() * 500, y: 350 + Math.random() * 100 };
+        document.getElementById('patchBtn').disabled = false;
+        logDataPoint("PATCH_SWITCHED_ARRIVED");
+    }, PATCH_TRAVEL_TIME_MS);
 }
-setInterval(spawnPredator, 12000);
+
+// Predator Scheduling
+setInterval(() => {
+    if (!gameStarted || !gameActive || predator.active) return;
+    predator.active = true;
+    predator.x = -200;
+    predator.y = 30 + (Math.random() * 60);
+    if(assets.hawk.loaded) assets.hawk.snd.play();
+    predator.timer = Date.now();
+    logDataPoint("PREDATOR_SPAWN");
+}, 8000);
+
+setInterval(() => { npcRock.active = Math.random() > 0.5; }, 10000);
 
 function gameLoop() {
-    if (!gameStarted) return;
+    if (!gameStarted || !gameActive) return;
 
-    // Movement
-    if (keys['ArrowLeft']) player.x -= 4;
-    if (keys['ArrowRight']) player.x += 4;
-    if (keys['ArrowUp']) player.y -= 4;
-    if (keys['ArrowDown']) player.y += 4;
-
+    // Movement (Disabled while traveling)
+    if (!isTraveling) {
+        if (keys['ArrowLeft']) player.x -= 4;
+        if (keys['ArrowRight']) player.x += 4;
+        if (keys['ArrowUp']) player.y -= 4;
+        if (keys['ArrowDown']) player.y += 4;
+    }
     player.y = Math.max(320, Math.min(420, player.y));
     player.x = Math.max(0, Math.min(750, player.x));
 
-    let onRock = (player.x > 680 && player.y < 350);
+    let onRightRock = (player.x > 680 && player.y < 350);
+    
+    // Metabolic Drains (Continues during travel)
+    player.hunger = Math.min(100, player.hunger + 0.04);
+    player.social -= 0.04;
 
-    // Sentry Social Capital
-    if (onRock) {
-        player.social = Math.min(100, player.social + 0.25);
-        document.getElementById('roleUI').innerText = "Sentry 👁";
-    } else {
-        player.social = Math.max(0, player.social - 0.04);
-        document.getElementById('roleUI').innerText = "Forager 🐾";
-    }
+    if(player.hunger >= 100) return triggerGameOver("You died of starvation.");
+    if(player.social <= 0) return triggerGameOver("Your mob has decided to leave you behind, game over.");
 
-    // Digging/Searching Actions
-    if (keys['Space'] && !onRock) {
+    // Foraging (Disabled while traveling)
+    if (keys['Space'] && !onRightRock && !isTraveling) {
         if (assets.scratch.loaded && assets.scratch.snd.paused) assets.scratch.snd.play();
-        player.hunger += 0.06;
+        
+        let densityRatio = Math.max(0, foodInPatch / maxFoodInPatch);
+        detectionRadius = Math.max(15, 60 * densityRatio); 
+
         let d = Math.hypot(player.x - scorpion.x, player.y - scorpion.y);
-        if (d < 50) {
-            player.hunger = Math.max(0, player.hunger - 35);
-            scorpion = { x: Math.random() * 600 + 100, y: 350 + Math.random() * 100 };
-            logs.push({ event: "FORAGED", hunger: player.hunger, time: Date.now() });
+        
+        if (d < detectionRadius) {
+            foodInPatch -= FORAGE_DEPLETION_RATE; // Uses experimental parameter
+            player.hunger = Math.max(0, player.hunger - 30);
+            emojiTimer = 45;
+            scorpion = { x: 150 + Math.random() * 500, y: 350 + Math.random() * 100 };
+            logDataPoint("FORAGED_SUCCESS");
         }
-    } else if (keys['ArrowLeft'] || keys['ArrowRight'] || keys['ArrowUp'] || keys['ArrowDown']) {
-        if (!onRock && assets.sniff.loaded && assets.sniff.snd.paused) assets.sniff.snd.play();
+    } else if ((keys['ArrowLeft'] || keys['ArrowRight']) && !onRightRock && !isTraveling) {
+        if (assets.sniff.loaded && assets.sniff.snd.paused) assets.sniff.snd.play();
     }
 
-    // Predator Logic
+    // Predation Risk
     if (predator.active) {
-        if (predator.type === 'eagle') predator.x += 3.5; else predator.x -= 2.5;
-        if (keys['KeyS'] && onRock) {
-            logs.push({ event: "VIGILANCE_HIT", latency: Date.now() - predator.timer, type: predator.type });
+        predator.x += 5;
+        if (keys['KeyS'] && onRightRock) {
+            player.social = Math.min(100, player.social + 20);
             predator.active = false;
+            logDataPoint("PREDATOR_SPOTTED_ALARM");
         }
-        if (predator.x > 950 || predator.x < -150) predator.active = false;
+        
+        // NPC spotting logic (Uses experimental parameter NPC_RELIABILITY)
+        if (npcRock.active && predator.x > 100 && predator.x < 150 && Math.random() < NPC_RELIABILITY) {
+            predator.active = false;
+            logDataPoint("PREDATOR_CLEARED_BY_NPC");
+        }
+
+        if (predator.active && predator.x > 850) {
+            predator.active = false;
+            // Base risk factor adjusted by PREDATOR_KILL_CHANCE variable
+            let risk = PREDATOR_KILL_CHANCE * (25 / Math.max(1, mobSize));
+            if (Math.random() < risk && mobSize > 0) {
+                mobSize--;
+                logDataPoint("MOB_MEMBER_DEATH");
+            }
+        }
     }
 
-    render(onRock);
-    document.getElementById('hungerUI').innerText = Math.floor(player.hunger);
-    document.getElementById('socialUI').innerText = Math.floor(player.social);
+    // Last One Left logic
+    if (mobSize <= 0 && predator.active && predator.x > 350 && predator.x < 450 && !onRightRock) {
+        return triggerGameOver("Game Over: The eagle caught you.");
+    }
+
+    render(onRightRock);
+    updateUI();
     requestAnimationFrame(gameLoop);
 }
 
-function render(onRock) {
-    // Environment
+function updateUI() {
+    document.getElementById('hungerUI').innerText = Math.floor(player.hunger);
+    document.getElementById('socialUI').innerText = Math.floor(player.social);
+    document.getElementById('mobUI').innerText = mobSize;
+    
+    let qualityPercent = Math.max(0, Math.floor((foodInPatch / maxFoodInPatch) * 100));
+    document.getElementById('patchUI').innerText = isTraveling ? "TRAVELING..." : qualityPercent + "%";
+}
+
+function render(onRightRock) {
     ctx.fillStyle = "#87CEEB"; ctx.fillRect(0, 0, 800, 320); // Sky
     ctx.fillStyle = "#d2b48c"; ctx.fillRect(0, 320, 800, 180); // Sand
 
-    // The Sentry Rock
-    ctx.fillStyle = "#666";
-    ctx.beginPath();
-    ctx.moveTo(680, 350); ctx.lineTo(720, 260); ctx.lineTo(780, 260); ctx.lineTo(800, 350);
-    ctx.fill();
+    // Rocks
+    ctx.fillStyle = "#555"; ctx.beginPath(); ctx.moveTo(20, 350); ctx.lineTo(60, 260); ctx.lineTo(120, 260); ctx.lineTo(150, 350); ctx.fill();
+    ctx.fillStyle = "#666"; ctx.beginPath(); ctx.moveTo(650, 350); ctx.lineTo(700, 260); ctx.lineTo(760, 260); ctx.lineTo(800, 350); ctx.fill();
 
-    // The Mob
-    ctx.font = "30px Arial";
-    ctx.fillText("🐾", 100, 420); ctx.fillText("🐾", 160, 400);
+    // Sentry NPC placement
+    if(npcRock.active && assets.meerkatRock.loaded) ctx.drawImage(assets.meerkatRock.img, 65, 215, 45, 70);
 
-    // DRAW MEERKAT IMAGE
-    let drawW = player.w;
-    let drawH = onRock ? player.h + 25 : player.h;
-    let drawY = onRock ? player.y - 25 : player.y;
-
-    if (assets.meerkat.loaded) {
-        // Draw the image scaled to fit our player box
-        ctx.drawImage(assets.meerkat.img, player.x, drawY, drawW, drawH);
-    } else {
-        // Fail-safe visual
-        ctx.fillStyle = "#A0522D";
-        ctx.fillRect(player.x, drawY, drawW, drawH);
-        ctx.fillStyle = "white"; ctx.font = "10px Arial"; ctx.fillText("Searching for Image...", player.x, drawY + 15);
+    // Mob Grid
+    for(let i=0; i < mobSize; i++) {
+        let r = Math.floor(i / 9); let c = i % 9;
+        if(assets.smallMeerkat.loaded) ctx.drawImage(assets.smallMeerkat.img, 180 + (c*45), 360 + (r*30), 30, 45);
     }
 
-    // Whiskers Ring
-    if (keys['Space'] && !onRock) {
-        let dist = Math.hypot(player.x - scorpion.x, player.y - scorpion.y);
-        ctx.beginPath();
-        ctx.arc(player.x + (player.w/2), player.y + (player.h/2), 70, 0, Math.PI * 2);
-        ctx.strokeStyle = dist < 90 ? "rgba(0, 255, 0, 0.8)" : "rgba(255, 0, 0, 0.4)";
-        ctx.lineWidth = 5;
-        ctx.stroke();
+    // Travel Overlay UI Effect
+    if (isTraveling) {
+        let timeLeft = Math.max(0, (travelEndTime - Date.now()) / 1000);
+        ctx.fillStyle = "rgba(0, 0, 0, 0.4)";
+        ctx.fillRect(150, 330, 500, 140);
+        ctx.fillStyle = "white"; ctx.font = "bold 20px Arial";
+        ctx.fillText(`Moving to new patch... (${timeLeft.toFixed(1)}s)`, 280, 410);
     }
 
-    // Predators
-    if (predator.active) {
-        ctx.font = "40px Arial";
-        ctx.fillText(predator.type === 'eagle' ? "🦅" : "🐍", predator.x, predator.y);
+    // Player & Dynamic Whiskers (Hidden during travel)
+    if (keys['Space'] && !onRightRock && !isTraveling) {
+        let d = Math.hypot(player.x - scorpion.x, player.y - scorpion.y);
+        ctx.beginPath(); 
+        ctx.arc(player.x + 25, player.y + 35, detectionRadius + 20, 0, Math.PI * 2);
+        ctx.strokeStyle = d < detectionRadius ? "rgba(0, 255, 0, 0.7)" : "rgba(255, 255, 255, 0.4)";
+        ctx.lineWidth = 3; ctx.stroke();
+    }
+
+    // Only draw player avatar if not abstractly traveling away
+    if (!isTraveling) {
+        let pImg = onRightRock ? assets.meerkatRock : assets.meerkatDig;
+        let yAdj = onRightRock ? -45 : 0;
+        if(pImg.loaded) ctx.drawImage(pImg.img, player.x, player.y + yAdj, player.w, player.h);
+    }
+
+    if(emojiTimer > 0 && !isTraveling) { ctx.font = "30px Arial"; ctx.fillText("🦂", player.x, player.y - 20); emojiTimer--; }
+
+    // Invisible Eagle unless on Rock
+    if (predator.active && onRightRock && assets.eagle.loaded) {
+        ctx.drawImage(assets.eagle.img, predator.x, predator.y, 110, 75);
+    }
+
+    // Clouds
+    clouds.forEach(cl => {
+        if(assets[cl.type].loaded) ctx.drawImage(assets[cl.type].img, cl.x, cl.y, cl.w, cl.h);
+        cl.x += cl.speed;
+        if(cl.x > 850) cl.x = -400;
+    });
+
+    if(mobSize === 0) {
+        ctx.fillStyle = "red"; ctx.font = "bold 20px Arial";
+        ctx.fillText("You are the last one left: be careful!", 230, 150);
     }
 }
 
-function downloadCSV() {
-    let csv = "Event,Type,Latency,Time\n" + logs.map(e => `${e.event},${e.type || ''},${e.latency || ''},${e.time}`).join("\n");
-    let blob = new Blob([csv], { type: 'text/csv' });
-    let url = URL.createObjectURL(blob);
-    let a = document.createElement('a');
-    a.href = url; a.download = 'meerkat_cognitive_data.csv'; a.click();
+function triggerGameOver(m) {
+    gameActive = false;
+    logDataPoint("GAME_OVER", { reason: m });
+    
+    document.getElementById('overlay').style.display = 'flex';
+    document.getElementById('modalContent').innerHTML = `
+        <h2>GAME OVER</h2>
+        <p style="font-size:1.2em;">${m}</p>
+        <p id="uploadStatus" style="color: #666;">Uploading behavioral data...</p>
+        <button id="restartBtn" class="primary" onclick="location.reload()" disabled>RESTART SIMULATION</button>
+    `;
+
+    sendDataToDataPipe();
+}
+
+// --- Helper to Convert Array of Objects to CSV String ---
+function logsToCSV(dataArray) {
+    if (!dataArray || !dataArray.length) return "";
+
+    const headers = Array.from(
+        dataArray.reduce((acc, row) => {
+            Object.keys(row).forEach(k => acc.add(k));
+            return acc;
+        }, new Set())
+    );
+
+    const csvRows = [];
+    csvRows.push(headers.join(","));
+
+    for (const row of dataArray) {
+        const values = headers.map(header => {
+            const val = row[header] !== undefined ? row[header] : "";
+            const escaped = ('' + val).replace(/"/g, '""');
+            return `"${escaped}"`;
+        });
+        csvRows.push(values.join(","));
+    }
+
+    return csvRows.join("\n");
+}
+
+function sendDataToDataPipe() {
+    if (DATAPIPE_ID === "ptgcVHCzENl8") {
+        console.warn("DataPipe ID not set. Skipping upload.");
+        document.getElementById('uploadStatus').innerText = "Data saved locally (DataPipe ID missing).";
+        document.getElementById('restartBtn').disabled = false;
+        return;
+    }
+
+    const dataString = logsToCSV(logs);
+    const filename = `${subjectId}_meerkat_data.csv`;
+
+    fetch("https://pipe.jspsych.org/api/data/", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+            experimentID: DATAPIPE_ID,
+            filename: filename,
+            data: dataString
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        document.getElementById('uploadStatus').innerText = "Data upload complete! Thank you.";
+        document.getElementById('uploadStatus').style.color = "green";
+        document.getElementById('restartBtn').disabled = false;
+    })
+    .catch(error => {
+        document.getElementById('uploadStatus').innerText = "Upload failed. Please check network.";
+        document.getElementById('uploadStatus').style.color = "red";
+        document.getElementById('restartBtn').disabled = false;
+    });
 }
 </script>
 </body>
-
 </html>
