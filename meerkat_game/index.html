@@ -63,7 +63,7 @@ const PATCH_TRAVEL_TIME_MS   = 5000;  // 4. Travel penalty when changing patches
 // =========================================================================
 
 // --- DataPipe & Subject Configuration ---
-const DATAPIPE_ID = "YOUR_EXPERIMENT_ID_HERE"; 
+const DATAPIPE_ID = "ptgcVHCzENl8"; 
 const subjectId = "SUBJ_" + Math.floor(Math.random() * 100000); 
 
 const canvas = document.getElementById('gameCanvas');
@@ -382,7 +382,7 @@ function logsToCSV(dataArray) {
 }
 
 function sendDataToDataPipe() {
-    if (DATAPIPE_ID === "ptgcVHCzENl8") {
+    if (!DATAPIPE_ID || DATAPIPE_ID === "YOUR_EXPERIMENT_ID_HERE") {
         console.warn("DataPipe ID not set. Skipping upload.");
         document.getElementById('uploadStatus').innerText = "Data saved locally (DataPipe ID missing).";
         document.getElementById('restartBtn').disabled = false;
@@ -401,14 +401,21 @@ function sendDataToDataPipe() {
             data: dataString
         })
     })
-    .then(response => response.json())
-    .then(data => {
+    .then(async response => {
+        const resData = await response.json();
+        
+        // Catch HTTP error codes (e.g., 400, 403, 500)
+        if (!response.ok) {
+            throw new Error(resData.message || resData.error || `Server error (HTTP ${response.status})`);
+        }
+
         document.getElementById('uploadStatus').innerText = "Data upload complete! Thank you.";
         document.getElementById('uploadStatus').style.color = "green";
         document.getElementById('restartBtn').disabled = false;
     })
     .catch(error => {
-        document.getElementById('uploadStatus').innerText = "Upload failed. Please check network.";
+        console.error("DataPipe Upload Error:", error);
+        document.getElementById('uploadStatus').innerText = `Upload failed: ${error.message}`;
         document.getElementById('uploadStatus').style.color = "red";
         document.getElementById('restartBtn').disabled = false;
     });
