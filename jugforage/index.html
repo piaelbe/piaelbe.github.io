@@ -1,0 +1,473 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Jug Puzzle Experiment</title>
+    <style>
+        :root { --primary: #2196F3; --bg: #f0f2f5; --danger: #ff4444; --warning: #ff9800; --success: #4CAF50; --gold: #FFD700; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: var(--bg); margin: 0; height: 100vh; display: flex; justify-content: center; align-items: center; }
+        
+        /* Layout Containers */
+        #intro-screen, #practice-transition-screen, #experiment-area, #questionnaire-area, #completion-screen {
+            display: none; width: 100%; max-width: 900px; padding: 30px; background: white; border-radius: 10px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); text-align: center; max-height: 90vh; overflow-y: auto;
+        }
+        #intro-screen { display: block; }
+
+        /* Experiment UI */
+        #experiment-area { flex-direction: column; align-items: center; justify-content: center; position: relative; height: 80vh; }
+        
+        #practice-banner { display: none; color: var(--warning); font-weight: bold; font-size: 1.5em; margin-bottom: 10px; letter-spacing: 2px; }
+
+        #travel-overlay { 
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%; 
+            background: rgba(0,0,0,0.9); color: white; display: none; 
+            flex-direction: column; align-items: center; justify-content: center; z-index: 100; border-radius: 10px;
+        }
+        .progress-container { width: 300px; height: 10px; background: #333; border-radius: 5px; margin-top: 20px; overflow: hidden; }
+        #progress-bar { width: 0%; height: 100%; background: var(--primary); transition: width 0.1s linear; }
+
+        .center-display { text-align: center; margin-bottom: 20px; }
+        .score-display { font-size: 1.8em; font-weight: bold; color: var(--gold); margin-bottom: -10px; }
+        .timer-prominent { font-size: 4em; font-weight: 800; font-family: monospace; color: #333; line-height: 1; }
+        .target-display { font-size: 2em; font-weight: bold; background: #f0f2f5; padding: 10px 40px; border-radius: 50px; border: 4px solid #333; margin-top: 10px; display: inline-block;}
+
+        .jug-container { display: flex; justify-content: center; gap: 60px; align-items: flex-end; height: 300px; margin: 10px 0; }
+        .jug-wrapper { display: flex; flex-direction: column; align-items: center; gap: 10px; }
+        .jug { border: 4px solid #333; border-top: none; border-radius: 0 0 10px 10px; width: 90px; position: relative; background: #fff; cursor: pointer; }
+        .water { position: absolute; bottom: 0; width: 100%; background: var(--primary); transition: height 0.3s ease; }
+        .liter-text { font-size: 1.2em; font-weight: bold; color: #333; }
+        .selected { border-color: var(--primary); box-shadow: 0 0 20px rgba(33, 150, 243, 0.4); transform: translateY(-5px); transition: transform 0.2s; }
+
+        .controls { display: flex; justify-content: center; gap: 15px; margin-top: 20px; }
+        button { padding: 12px 24px; font-weight: bold; cursor: pointer; border-radius: 5px; border: none; font-size: 1em; }
+        .btn-action { background: #333; color: white; }
+        .btn-leave { color: white; padding: 10px 15px; }
+        .btn-impossible { background: var(--danger); }
+        .btn-notworth { background: var(--warning); }
+        .btn-next { background: var(--success); color: white; display: none; font-size: 1.2em; padding: 15px 40px; margin: 20px auto 0 auto; }
+        .btn-start { background: var(--success); color: white; font-size: 1.2em; padding: 15px 40px; margin-top: 20px; }
+
+        /* Questionnaire UI */
+        .q-section { text-align: left; margin-bottom: 30px; }
+        .q-item { margin-bottom: 15px; padding: 15px; background: #fdfdfd; border: 1px solid #eee; border-radius: 5px; }
+        .q-item label { display: block; margin-bottom: 8px; font-weight: bold; color: #333; }
+        .likert-scale { display: flex; gap: 15px; }
+        .likert-scale label { font-weight: normal; font-size: 0.9em; display: flex; align-items: center; gap: 5px; }
+        input[type="text"], input[type="number"], select, textarea { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; }
+    </style>
+</head>
+<body>
+
+<!-- 1. INTRO SCREEN -->
+<div id="intro-screen">
+    <h1>Welcome to the Opportunity Cost Task</h1>
+    <p style="text-align: left; line-height: 1.6;">
+        In this task, you will solve water jug puzzles. Your goal is to measure exactly the <strong>Target Amount</strong> in either jug. You have exactly <strong>12 minutes</strong> to earn as many points as possible.
+    </p>
+    <div style="text-align: left; background: #f0f2f5; padding: 15px; border-radius: 5px;">
+        <strong>Scoring Rules:</strong><br>
+        • <strong>Solve it:</strong> +10 Points<br>
+        • <strong>Skip: "Impossible to solve"</strong>: +10 Points if it was truly a trap, -5 Points if you are wrong.<br>
+        • <strong>Skip: "Not worth my time"</strong>: 0 Points (saves time), but -5 Points if it was actually a trap you missed.
+    </div>
+    <button class="btn-start" onclick="startPractice()">START PRACTICE ROUND</button>
+</div>
+
+<!-- 2. PRACTICE TRANSITION SCREEN -->
+<div id="practice-transition-screen">
+    <h2>Practice Complete!</h2>
+    <p>You now know how the controls work and how to skip puzzles.</p>
+    <p>The real task will now begin. You will have exactly <strong>12 minutes</strong>.</p>
+    <button class="btn-start" onclick="startRealSession()">START 12-MINUTE SESSION</button>
+</div>
+
+<!-- 3. EXPERIMENT AREA -->
+<div id="experiment-area">
+    <div id="practice-banner">PRACTICE ROUND</div>
+    
+    <div id="travel-overlay">
+        <h2 id="travel-msg">Traveling...</h2>
+        <h3 id="feedback-msg" style="color: var(--gold);"></h3>
+        <div id="timer-label" style="font-size: 2em; opacity: 0.7;">3s</div>
+        <div class="progress-container"><div id="progress-bar"></div></div>
+    </div>
+
+    <div class="center-display">
+        <div id="score-container" class="score-display">SCORE: <span id="score-val">0</span></div>
+        <div id="timer-container" class="timer-prominent"><span id="session-timer">720</span></div>
+        <div class="target-display">GOAL: <span id="target-val">0</span>L</div>
+    </div>
+
+    <div class="jug-container">
+        <div class="jug-wrapper">
+            <div class="liter-text"><span id="valA">0</span> / <span id="maxA">5</span>L</div>
+            <div id="jugA" class="jug" onclick="selectJug('A')"><div id="waterA" class="water"></div></div>
+            <div style="font-weight: bold;">Jug A</div>
+        </div>
+        <div class="jug-wrapper">
+            <div class="liter-text"><span id="valB">0</span> / <span id="maxB">3</span>L</div>
+            <div id="jugB" class="jug" onclick="selectJug('B')"><div id="waterB" class="water"></div></div>
+            <div style="font-weight: bold;">Jug B</div>
+        </div>
+    </div>
+
+    <div class="controls" id="standard-controls">
+        <button class="btn-action" onclick="fillJug()">FILL</button>
+        <button class="btn-action" onclick="transfer()">POUR</button>
+        <button class="btn-action" onclick="emptyJug()">EMPTY</button>
+    </div>
+
+    <div class="controls" id="skip-controls">
+        <button class="btn-leave btn-impossible" onclick="leavePatch('impossible')">Impossible to solve</button>
+        <button class="btn-leave btn-notworth" onclick="leavePatch('notworthit')">Not worth my time</button>
+    </div>
+
+    <button id="next-patch-btn" class="btn-next" onclick="leavePatch('solved')">NEXT PUZZLE (+10 pts)</button>
+</div>
+
+<!-- 4. QUESTIONNAIRE AREA -->
+<div id="questionnaire-area">
+    <h2>Post-Task Questionnaire</h2>
+    
+    <div class="q-section" id="demographics">
+        <h3>Demographics & Strategy</h3>
+        <div class="q-item">
+            <label>Age</label>
+            <input type="number" id="demo-age" min="18" max="99">
+        </div>
+        <div class="q-item">
+            <label>Gender</label>
+            <select id="demo-gender">
+                <option value="">Select...</option>
+                <option value="female">Female</option>
+                <option value="male">Male</option>
+                <option value="nonbinary">Non-binary</option>
+                <option value="prefer_not">Prefer not to say</option>
+            </select>
+        </div>
+        <div class="q-item">
+            <label>What strategy did you use to decide when to give up on a puzzle?</label>
+            <textarea id="demo-strategy" rows="3"></textarea>
+        </div>
+    </div>
+
+    <div class="q-section" id="asrs-container">
+        <h3>Self-Evaluation</h3>
+        <p style="font-size: 0.9em; color: #555;">Please answer the following questions regarding your experiences over the past 6 months.</p>
+        <!-- ASRS Questions injected via JS -->
+    </div>
+
+    <button class="btn-start" onclick="submitFinalData()">SUBMIT DATA TO ZENODO</button>
+</div>
+
+<!-- 5. COMPLETION SCREEN -->
+<div id="completion-screen">
+    <h2>Thank You!</h2>
+    <p>Your data has been saved securely.</p>
+    <p>Please return to Prolific and enter the completion code: <strong>C1A2B3D4</strong></p>
+</div>
+
+<script>
+    // --- TASK CONFIGURATION ---
+    const TOTAL_TASK_TIME = 720; 
+    const TRAVEL_TIME = 3; 
+    
+    const asrsQuestions = [
+        "1. How often do you have trouble wrapping up the final details of a project, once the challenging parts have been done?",
+        "2. How often do you have difficulty getting things in order when you have to do a task that requires organization?",
+        "3. How often do you have problems remembering appointments or obligations?",
+        "4. When you have a task that requires a lot of thought, how often do you avoid or delay getting started?",
+        "5. How often do you fidget or squirm with your hands or feet when you have to sit down for a long time?",
+        "6. How often do you feel overly active and compelled to do things, like you were driven by a motor?",
+        "7. How often do you make careless mistakes when you have to work on a boring or difficult project?",
+        "8. How often do you have difficulty keeping your attention when you are doing boring or repetitive work?",
+        "9. How often do you have difficulty concentrating on what people say to you, even when they are speaking to you directly?",
+        "10. How often do you misplace or have difficulty finding things at home or at work?",
+        "11. How often are you distracted by activity or noise around you?",
+        "12. How often do you leave your seat in meetings or other situations in which you are expected to remain seated?",
+        "13. How often do you feel restless or fidgety?",
+        "14. How often do you have difficulty unwinding and relaxing when you have time to yourself?",
+        "15. How often do you find yourself talking too much when you are in social situations?",
+        "16. When you're in a conversation, how often do you find yourself finishing the sentences of the people you are talking to, before they can finish them themselves?",
+        "17. How often do you have difficulty waiting your turn in situations when turn taking is required?",
+        "18. How often do you interrupt others when they are busy?"
+    ];
+
+    const difficultyPool = {
+        solvable: [
+            { diff: 'easy_1', caps: [5, 2], target: 3 }, { diff: 'easy_2', caps: [7, 3], target: 4 }, { diff: 'easy_3', caps: [8, 3], target: 5 }, { diff: 'easy_4', caps: [9, 5], target: 4 }, { diff: 'easy_5', caps: [6, 1], target: 5 },
+            { diff: 'medium_1', caps: [5, 3], target: 4 }, { diff: 'medium_2', caps: [8, 5], target: 2 }, { diff: 'medium_3', caps: [7, 4], target: 5 }, { diff: 'medium_4', caps: [11, 4], target: 3 }, { diff: 'medium_5', caps: [9, 4], target: 1 },
+            { diff: 'hard_1', caps: [9, 4], target: 6 }, { diff: 'hard_2', caps: [11, 7], target: 6 }, { diff: 'hard_3', caps: [9, 5], target: 7 }, { diff: 'hard_4', caps: [13, 5], target: 6 }, { diff: 'hard_5', caps: [7, 5], target: 1 }
+        ],
+        impossible: [
+            { diff: 'impossible_1', caps: [6, 4], target: 3 }, { diff: 'impossible_2', caps: [8, 6], target: 5 }, { diff: 'impossible_3', caps: [10, 6], target: 7 }, { diff: 'impossible_4', caps: [9, 6], target: 5 },
+            { diff: 'impossible_5', caps: [12, 9], target: 5 }, { diff: 'impossible_6', caps: [14, 10], target: 7 }, { diff: 'impossible_7', caps: [15, 10], target: 8 }, { diff: 'impossible_8', caps: [12, 8], target: 10 }
+        ]
+    };
+
+    let state = { curA: 0, curB: 0, selected: 'A', sessionRunning: false, isPractice: false, timeLeft: 0, score: 0, is_solvable: true, currentDiff: '', trialStartTime: 0, trialMoves: 0, totalClicks: 0 };
+    let detailedTrialLog = []; 
+    let timerId = null;
+
+    // --- QUESTIONNAIRE GENERATION ---
+    function renderASRS() {
+        const container = document.getElementById('asrs-container');
+        const options = ["Never", "Rarely", "Sometimes", "Often", "Very Often"];
+        asrsQuestions.forEach((q, index) => {
+            let html = `<div class="q-item"><label>${q}</label><div class="likert-scale">`;
+            options.forEach((opt, val) => { html += `<label><input type="radio" name="asrs_${index}" value="${val}" required> ${opt}</label>`; });
+            html += `</div></div>`;
+            container.insertAdjacentHTML('beforeend', html);
+        });
+    }
+    renderASRS();
+
+    // --- EXPERIMENT LOGIC ---
+    function startPractice() {
+        document.getElementById('intro-screen').style.display = 'none';
+        document.getElementById('experiment-area').style.display = 'flex';
+        
+        state.isPractice = true;
+        state.sessionRunning = true;
+        
+        // Hide timer and score during practice
+        document.getElementById('practice-banner').style.display = 'block';
+        document.getElementById('timer-container').style.display = 'none';
+        document.getElementById('score-container').style.display = 'none';
+        
+        startNewPatch({ diff: 'practice', caps: [5, 3], target: 4, solvable: true });
+    }
+
+    function startRealSession() {
+        document.getElementById('practice-transition-screen').style.display = 'none';
+        document.getElementById('experiment-area').style.display = 'flex';
+        
+        state.isPractice = false;
+        state.sessionRunning = true;
+        state.timeLeft = TOTAL_TASK_TIME;
+        state.score = 0;
+        detailedTrialLog = [];
+        
+        // Restore timer and score UI
+        document.getElementById('practice-banner').style.display = 'none';
+        document.getElementById('timer-container').style.display = 'block';
+        document.getElementById('score-container').style.display = 'block';
+        document.getElementById('score-val').innerText = state.score;
+        
+        timerId = setInterval(() => {
+            state.timeLeft--;
+            document.getElementById('session-timer').innerText = state.timeLeft;
+            if (state.timeLeft <= 0) endSession();
+        }, 1000);
+        
+        startNewPatch();
+    }
+
+    function getRandomPatch() {
+        const isSolvable = Math.random() < 0.70;
+        const pool = isSolvable ? difficultyPool.solvable : difficultyPool.impossible;
+        const config = pool[Math.floor(Math.random() * pool.length)];
+        return { ...config, solvable: isSolvable };
+    }
+
+    function startNewPatch(forcedConfig = null) {
+        if(!state.sessionRunning) return;
+        const config = forcedConfig || getRandomPatch();
+        
+        state.curA = 0; state.curB = 0; state.solved = false;
+        
+        // Randomize placement (50% chance to swap Jug A and Jug B capacities)
+        let capacities = [...config.caps];
+        if (Math.random() > 0.5) { capacities.reverse(); }
+        state.capA = capacities[0]; 
+        state.capB = capacities[1]; 
+        
+        state.target = config.target;
+        state.is_solvable = config.solvable;
+        state.currentDiff = config.diff;
+        
+        state.trialStartTime = Date.now();
+        state.trialMoves = 0;
+        state.totalClicks = 0;
+
+        document.getElementById('next-patch-btn').style.display = 'none';
+        document.getElementById('standard-controls').style.display = 'flex';
+        document.getElementById('skip-controls').style.display = 'flex';
+        
+        const maxV = Math.max(state.capA, state.capB);
+        document.getElementById('jugA').style.height = (state.capA/maxV * 240) + 'px';
+        document.getElementById('jugB').style.height = (state.capB/maxV * 240) + 'px';
+        document.getElementById('maxA').innerText = state.capA; document.getElementById('maxB').innerText = state.capB;
+        document.getElementById('target-val').innerText = state.target;
+        
+        updateUI();
+    }
+
+    function endSession() {
+        clearInterval(timerId);
+        state.sessionRunning = false;
+        document.getElementById('experiment-area').style.display = 'none';
+        document.getElementById('questionnaire-area').style.display = 'block';
+    }
+
+    function leavePatch(reason) {
+        if (!state.sessionRunning) return;
+        state.totalClicks++; // Count the leave button click
+        const duration_ms = Date.now() - state.trialStartTime;
+        let pointsEarned = 0;
+        let feedback = "";
+
+        if (reason === 'solved') {
+            pointsEarned = 10; feedback = "Solved! (+10)";
+        } else if (reason === 'impossible') {
+            if (!state.is_solvable) { pointsEarned = 10; feedback = "Correct! It was a trap. (+10)"; } 
+            else { pointsEarned = -5; feedback = "Incorrect! It was solvable. (-5)"; }
+        } else if (reason === 'notworthit') {
+            if (!state.is_solvable) { pointsEarned = -5; feedback = "Missed Trap! It was impossible. (-5)"; } 
+            else { pointsEarned = 0; feedback = "Skipped. Time saved. (+0)"; }
+        }
+
+        if (state.isPractice) {
+            // End practice mode
+            state.sessionRunning = false;
+            document.getElementById('experiment-area').style.display = 'none';
+            document.getElementById('practice-transition-screen').style.display = 'block';
+            return;
+        }
+
+        state.score += pointsEarned;
+        document.getElementById('score-val').innerText = state.score;
+
+        detailedTrialLog.push({
+            trial_number: detailedTrialLog.length + 1,
+            difficulty: state.currentDiff,
+            is_solvable: state.is_solvable,
+            exit_reason: reason,
+            duration_ms: duration_ms,
+            total_clicks: state.totalClicks,
+            moves: state.trialMoves,
+            points_awarded: pointsEarned,
+            cumulative_score: state.score
+        });
+
+        if (TRAVEL_TIME === 0) { startNewPatch(); return; }
+
+        const overlay = document.getElementById('travel-overlay');
+        const bar = document.getElementById('progress-bar');
+        
+        document.getElementById('travel-msg').innerText = "Moving to next patch...";
+        document.getElementById('feedback-msg').innerText = feedback;
+        overlay.style.display = 'flex';
+        
+        let start = Date.now();
+        let duration = TRAVEL_TIME * 1000;
+
+        const anim = setInterval(() => {
+            let elapsed = Date.now() - start;
+            let progress = (elapsed / duration) * 100;
+            bar.style.width = Math.min(progress, 100) + "%";
+            document.getElementById('timer-label').innerText = Math.ceil((duration - elapsed) / 1000) + "s";
+
+            if (elapsed >= duration) {
+                clearInterval(anim);
+                overlay.style.display = 'none';
+                bar.style.width = "0%";
+                startNewPatch();
+            }
+        }, 50);
+    }
+
+    // --- INTERACTION CONTROLS ---
+    function selectJug(id) {
+        if (state.solved) return;
+        state.totalClicks++;
+        state.selected = id;
+        document.getElementById('jugA').classList.toggle('selected', id === 'A');
+        document.getElementById('jugB').classList.toggle('selected', id === 'B');
+    }
+
+    function fillJug() {
+        if (!state.sessionRunning || state.solved) return;
+        state.totalClicks++;
+        state.selected === 'A' ? state.curA = state.capA : state.curB = state.capB;
+        state.trialMoves++; updateUI();
+    }
+
+    function emptyJug() {
+        if (!state.sessionRunning || state.solved) return;
+        state.totalClicks++;
+        state.selected === 'A' ? state.curA = 0 : state.curB = 0;
+        state.trialMoves++; updateUI();
+    }
+
+    function transfer() {
+        if (!state.sessionRunning || state.solved) return;
+        state.totalClicks++;
+        if (state.selected === 'A') {
+            let move = Math.min(state.curA, state.capB - state.curB);
+            state.curA -= move; state.curB += move;
+        } else {
+            let move = Math.min(state.curB, state.capA - state.curA);
+            state.curB -= move; state.curA += move;
+        }
+        state.trialMoves++; updateUI();
+    }
+
+    function updateUI() {
+        document.getElementById('waterA').style.height = (state.curA / state.capA * 100) + '%';
+        document.getElementById('waterB').style.height = (state.curB / state.capB * 100) + '%';
+        document.getElementById('valA').innerText = state.curA;
+        document.getElementById('valB').innerText = state.curB;
+        
+        if (!state.solved && (state.curA === state.target || state.curB === state.target)) {
+            state.solved = true;
+            document.getElementById('standard-controls').style.display = 'none';
+            document.getElementById('skip-controls').style.display = 'none';
+            document.getElementById('next-patch-btn').style.display = 'block';
+        }
+    }
+
+    // --- DATA SUBMISSION ---
+    function submitFinalData() {
+        const urlParams = new URLSearchParams(window.location.search);
+        const prolificId = urlParams.get('PROLIFIC_PID') || 'local_test_' + Math.floor(Math.random()*1000);
+
+        const demographics = {
+            age: document.getElementById('demo-age').value,
+            gender: document.getElementById('demo-gender').value,
+            strategy: document.getElementById('demo-strategy').value
+        };
+
+        const asrsData = {};
+        for(let i=0; i<18; i++) {
+            const selected = document.querySelector(`input[name="asrs_${i}"]:checked`);
+            asrsData[`item_${i+1}`] = selected ? selected.value : null;
+        }
+
+        const finalPayload = {
+            participant_id: prolificId,
+            final_score: state.score,
+            demographics: demographics,
+            asrs_scores: asrsData,
+            trial_data: detailedTrialLog
+        };
+
+        console.log("Payload ready:", finalPayload);
+        
+        document.getElementById('questionnaire-area').style.display = 'none';
+        document.getElementById('completion-screen').style.display = 'block';
+
+        // THE LIVE DATAPIPE FETCH CONNECTION
+        fetch('https://pipe.jspsych.org/api/data/', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+            body: JSON.stringify({
+                experimentID: 'Pzctk9BR08mP',
+                filename: `opportunity_cost_${prolificId}_${Date.now()}.json`,
+                data: JSON.stringify(finalPayload)
+            })
+        });
+    }
+</script>
+</body>
+</html>
